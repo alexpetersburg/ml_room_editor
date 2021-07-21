@@ -42,12 +42,11 @@ def predict(image_path: str) -> (np.array, float):
     img = mmcv.imread(image_path)
 
     result = inference_segmentor(seg_model, img)[0]
-    result_floor = np.where(result[0]==FLOOR_IDX, result[0], 0)
-
+    result_floor = np.where(result==FLOOR_IDX, result, 0)
     transformed_img = inference_transform({'img': img})
     _, _, pitch = pitch_model.infer_model(transformed_img.unsqueeze(0), 1)
     return (result_floor, pitch)
 
 
 if __name__ == "__main__":
-    predict('UprightNet/demo/demo/ADE_val_00000118.jpg')
+    print(predict('UprightNet/demo/demo/ADE_val_00000118.jpg'))

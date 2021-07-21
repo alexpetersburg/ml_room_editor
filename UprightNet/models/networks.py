@@ -143,7 +143,7 @@ class JointLoss(nn.Module):
         super(JointLoss, self).__init__()
         self.opt = opt
         self.num_scales = 5
-
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.total_loss = None
 
     def compute_cos_sim_loss(self, gt_n, pred_n, mask):
@@ -163,7 +163,7 @@ class JointLoss(nn.Module):
         num_pixels = pred_cam_geo_unit.size(2) * pred_cam_geo_unit.size(3)
         num_samples = pred_cam_geo_unit.size(0)
 
-        identity_mat = torch.eye(3).float().cuda()
+        identity_mat = torch.eye(3).float().to(self.device)
         identity_mat_rep = identity_mat.unsqueeze(0).repeat(num_samples,1,1)#, requires_grad=False)
         # zeros_mat = Variable(torch.zeros(3).float().cuda(), requires_grad=False)
 
@@ -238,14 +238,14 @@ class JointLoss(nn.Module):
                             pred_up_geo_unit, pred_weights,
                             targets, stack_error=False):
 
-        gt_up_vector = targets['gt_up_vector'].cuda()
+        gt_up_vector = targets['gt_up_vector'].to(self.device)
 
         cos_criterion = nn.CosineSimilarity(dim=0)
 
         num_pixels = pred_cam_geo_unit.size(2) * pred_cam_geo_unit.size(3)
         num_samples = pred_cam_geo_unit.size(0)
 
-        identity_mat = torch.eye(3).float().cuda()
+        identity_mat = torch.eye(3).float().to(self.device)
         identity_mat_rep = identity_mat.unsqueeze(0).repeat(num_samples,1,1)#, requires_grad=False)
         # zeros_mat = Variable(torch.zeros(3).float().cuda(), requires_grad=False)
 
@@ -364,7 +364,7 @@ class JointLoss(nn.Module):
         num_pixels = pred_cam_geo_unit.size(2) * pred_cam_geo_unit.size(3)
         num_samples = pred_cam_geo_unit.size(0)
 
-        identity_mat = torch.eye(3).float().cuda()
+        identity_mat = torch.eye(3).float().to(self.device)
         identity_mat_rep = identity_mat.unsqueeze(0).repeat(num_samples,1,1)#, requires_grad=False)
         # zeros_mat = Variable(torch.zeros(3).float().cuda(), requires_grad=False)
 
@@ -472,17 +472,17 @@ class JointLoss(nn.Module):
 
 
     def __call__(self, input_images, pred_cam_geo_unit, pred_up_geo_unit, pred_weights, targets):
-        gt_up_vector = Variable(targets['gt_up_vector'].cuda(), 
+        gt_up_vector = Variable(targets['gt_up_vector'].to(self.device),
                                 requires_grad=False) 
-        gt_rp = Variable(targets['gt_rp'].cuda(), 
+        gt_rp = Variable(targets['gt_rp'].to(self.device),
                          requires_grad=False)
 
-        gt_upright_geo = Variable(targets['upright_geo'].cuda(), 
+        gt_upright_geo = Variable(targets['upright_geo'].to(self.device),
                                   requires_grad=False)
-        gt_cam_geo = Variable(targets['cam_geo'].cuda(), 
+        gt_cam_geo = Variable(targets['cam_geo'].to(self.device),
                               requires_grad=False)
         
-        gt_mask = Variable(targets['gt_mask'].cuda(), 
+        gt_mask = Variable(targets['gt_mask'].to(self.device),
                            requires_grad=False)
         
         total_loss = 0.
@@ -494,7 +494,7 @@ class JointLoss(nn.Module):
                                                pred_weights)
             total_loss += pose_term
         else:
-            pose_term = torch.tensor(0.).cuda()
+            pose_term = torch.tensor(0.).to(self.device)
 
         if self.opt.w_cam > EPSILON:
             cam_geo_term = 0.0
@@ -519,7 +519,7 @@ class JointLoss(nn.Module):
                 total_loss += cam_grad_term
 
         else:
-            cam_geo_term = torch.tensor(0.).cuda()
+            cam_geo_term = torch.tensor(0.).to(self.device)
 
         if self.opt.w_up > EPSILON:
             upright_geo_term = self.opt.w_up * self.compute_cos_sim_loss(gt_upright_geo, 
@@ -540,7 +540,7 @@ class JointLoss(nn.Module):
                 print('upright_grad_term ', upright_grad_term.item())
                 total_loss += upright_grad_term
         else:
-            upright_n_term = torch.tensor(0.).cuda()
+            upright_n_term = torch.tensor(0.).to(self.device)
 
 
         self.total_loss = total_loss

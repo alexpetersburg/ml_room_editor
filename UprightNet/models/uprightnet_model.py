@@ -44,9 +44,10 @@ class UprightNet(BaseModel):
 
             model_parameters = self.load_network(new_model, 'G', model_name)
             new_model.load_state_dict(model_parameters)
-
-        new_model = torch.nn.parallel.DataParallel(new_model.cuda(),
-                                                  device_ids = [0])
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        if self.device == 'cuda':
+            new_model = torch.nn.parallel.DataParallel(new_model.to(self.device),
+                                                      device_ids = [0])
         self.netG = new_model
         self.criterion_joint = networks.JointLoss(opt) 
 
@@ -70,7 +71,7 @@ class UprightNet(BaseModel):
         self.targets = targets
 
     def forward(self):
-        self.input_images = Variable(self.input.cuda(), requires_grad = False)
+        self.input_images = Variable(self.input.to(self.device), requires_grad = False)
 
         self.pred_cam_geo, self.pred_up_geo, self.pred_weights = self.netG.forward(self.input_images)
 
@@ -246,7 +247,7 @@ class UprightNet(BaseModel):
     def infer_model(self, input_, targets):
         # switch to evaluation mode
         with torch.no_grad():
-            input_imgs = Variable(input_.cuda() , requires_grad = False)
+            input_imgs = Variable(input_.to(self.device) , requires_grad = False)
 
             pred_cam_geo, pred_up_geo, pred_weights = self.netG.forward(input_imgs)
             # normalize predicted surface nomral
@@ -260,16 +261,16 @@ class UprightNet(BaseModel):
 
         # switch to evaluation mode
         with torch.no_grad():
-            input_imgs = Variable(input_.cuda() , requires_grad = False)
+            input_imgs = Variable(input_.to(self.device) , requires_grad = False)
 
             pred_cam_geo, pred_up_geo, pred_weights = self.netG.forward(input_imgs)
             # normalize predicted surface nomral
             pred_cam_geo_unit = self.criterion_joint.normalize_coords(pred_cam_geo)
             pred_up_geo_unit = self.criterion_joint.normalize_normal(pred_up_geo)
 
-            gt_cam_geo = targets['cam_geo'].cuda()
-            gt_upright_geo = targets['upright_geo'].cuda()
-            gt_mask = targets['gt_mask'].cuda()
+            gt_cam_geo = targets['cam_geo'].to(self.device)
+            gt_upright_geo = targets['upright_geo'].to(self.device)
+            gt_mask = targets['gt_mask'].to(self.device)
 
             cam_n_error = self.criterion_joint.compute_normal_error(pred_cam_geo[:, 0:3, :, :].data,
                                                                     gt_cam_geo[:, 0:3, :, :],
@@ -298,7 +299,7 @@ class UprightNet(BaseModel):
 
         # switch to evaluation mode
         with torch.no_grad():
-            input_imgs = Variable(input_.cuda() , requires_grad = False)
+            input_imgs = Variable(input_.to(self.device) , requires_grad = False)
 
             pred_cam_geo, pred_up_geo, pred_weights = self.netG.forward(input_imgs)
             # normalize predicted surface nomral
