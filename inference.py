@@ -36,7 +36,7 @@ def get_seg_model(config_path:str = SEG_MODEL_CONFIG_PATH, checkpoint_path:str =
     return seg_model
 
 
-def predict(image_path: str) -> (np.array, float):
+def predict(image_path: str) -> (np.ndarray, float):
     seg_model = get_seg_model()
     pitch_model = get_pitch_model()
     img = mmcv.imread(image_path)
