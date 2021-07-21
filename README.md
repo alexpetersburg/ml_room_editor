@@ -14,4 +14,9 @@ python setup.py install
 ```python
 from inference import predict
 segmentation_mask, pitch = predict(image_path)
+
+-----------------------------------------------
+
+from floor_transform import change_floor_texture
+result = change_floor_texture(change_floor_texture(img, mask, pitch, texture, texture_angle=-20))
 ```
