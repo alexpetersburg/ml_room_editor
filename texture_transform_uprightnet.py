@@ -63,12 +63,12 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray,
 
 
 if __name__ == "__main__":
-    demo_img_path = os.path.join('UprightNet', 'demo', 'demo', 'ADE_val_00000118.jpg')
-    img = cv2.imread(demo_img_path)
-    texture = cv2.imread(os.path.join('UprightNet', 'demo', 'tile.jpg'))
+    for img_name in os.listdir(os.path.join('UprightNet', 'demo', 'input_imgs')):
+        demo_img_path = os.path.join('UprightNet', 'demo', 'input_imgs', img_name)
+        img = cv2.imread(demo_img_path)
+        texture = cv2.imread(os.path.join('UprightNet', 'demo', 'wood.jpg'))
 
-    mask, pitch = predict(demo_img_path)
-    result = change_floor_texture(img=img, mask=mask, pitch=pitch, texture=texture, texture_angle=-20)
-    cv2.imshow('orig', img)
-    cv2.imshow('result', result)
-    cv2.waitKey(0)
+        mask, pitch = predict(demo_img_path)
+        result = change_floor_texture(img=img, mask=mask, pitch=pitch, texture=texture, texture_angle=0)
+        cv2.imshow('result', np.vstack([img, result]))
+        cv2.waitKey(0)

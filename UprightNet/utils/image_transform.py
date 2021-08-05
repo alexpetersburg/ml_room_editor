@@ -62,9 +62,9 @@ def warp_perspective(img: np.ndarray, alpha: float, dz: float = None, f: float =
 
 def compute_angle(pitch):
     if pitch < -0.4:
-        angle = max((70 - 65 * (1 + pitch)), 15)
+        angle = max((70 - 70 * (1 + pitch)), 15)
     else:
-        angle = max((80 - 65 * (1 + pitch)), 15)
+        angle = max((80 - 70 * (1 + pitch)), 15)
     return angle
 
 

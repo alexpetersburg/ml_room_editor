@@ -48,5 +48,17 @@ def predict(image_path: str) -> (np.ndarray, float):
     return (result_floor, pitch)
 
 
+def predict_mask(image: (str, np.ndarray)) -> (np.ndarray, float):
+    seg_model = get_seg_model()
+    if isinstance(image, str):
+        img = mmcv.imread(image)
+    else:
+        img = image
+
+    result = inference_segmentor(seg_model, img)[0]
+
+    return result
+
+
 if __name__ == "__main__":
     print(predict('UprightNet/demo/demo/ADE_val_00000118.jpg'))

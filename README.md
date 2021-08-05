@@ -8,15 +8,24 @@ Tested on python 3.8
 cd mmsegmentation
 python setup.py install
 ```
-5) [Download](https://github.com/SwinTransformer/storage/releases/download/v1.0.1/upernet_swin_tiny_patch4_window7_512x512.pth) segmentation model and paste to `mmsegmentation/checkpoints` folder
-6) [Download](https://drive.google.com/file/d/1dlzzHxZeakkYSFfrWrO519Wc9W0GC2L_/view?usp=sharing) pitch model and unzip to `UprightNet` folder
+5) Install VPDetection:
+```shell
+cd XiaohuLuVPDetection
+python setup.py build
+python setup.py install
+```
+   
+6) [Download](https://github.com/SwinTransformer/storage/releases/download/v1.0.1/upernet_swin_tiny_patch4_window7_512x512.pth) segmentation model and paste to `mmsegmentation/checkpoints` folder
+7) [Download](https://drive.google.com/file/d/1dlzzHxZeakkYSFfrWrO519Wc9W0GC2L_/view?usp=sharing) pitch model and unzip to `UprightNet` folder
 # Usage
 ```python
-from inference import predict
+from inference import predict, predict_mask
 segmentation_mask, pitch = predict(image_path)
+segmentation_mask = predict_mask(image_path) # predict_mask(image)
 
 -----------------------------------------------
 
-from floor_transform import change_floor_texture
-result = change_floor_texture(change_floor_texture(img, mask, pitch, texture, texture_angle=-20))
+from texture_transform_vps import change_floor_texture, change_wall_texture
+result_floor = change_floor_texture(img=img, mask=mask, texture=texture, texture_angle=0)
+result_wall = change_wall_texture(img=img, mask=mask, color='#A91D11')
 ```
