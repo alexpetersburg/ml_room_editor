@@ -16,6 +16,32 @@ def create_polygon(mask):
     return points
 
 
+def find_horizontal_intersection_lines(polygon, img_shape):
+    result = []
+    stride = 2
+    shapely_poly = Polygon(polygon)
+    previous_intersect = None
+    previous_condidate = None
+    for y in range(0, img_shape[0]+1, stride):
+        condidate = (0, y)
+        pt = (img_shape[1], y)
+        line = LineString([condidate, pt])
+        intersect = shapely_poly.intersects(line)
+        if previous_intersect is None and intersect:
+            result.append((condidate, pt))
+            previous_intersect = intersect
+        elif previous_intersect is not None and previous_intersect != intersect:
+            if not previous_intersect:
+                result.append((previous_condidate, pt))
+            else:
+                result.append((condidate, pt))
+        previous_intersect = intersect
+        previous_condidate = condidate
+    if len(result) < 2:
+        result.append((previous_condidate, (img_shape[1], img_shape[0])))
+    return result
+
+
 def find_intersection_lines(polygon, pt, img_shape):
     shapely_poly = Polygon(polygon)
     result = []
@@ -95,16 +121,12 @@ def find_perspective_border(polygon, pt1, pt2, img_shape):
     # tmp = np.zeros(img_shape)
     result = []
     pt1_lines = find_intersection_lines(polygon, pt1, img_shape)[:2]
-    pt2_lines = find_intersection_lines(polygon, pt2, img_shape)[:2]
+    if pt2 is not None:
+        pt2_lines = find_intersection_lines(polygon, pt2, img_shape)[:2]
+    else:
+        pt2_lines = find_horizontal_intersection_lines(polygon, img_shape)[:2]
     for pt1_line in pt1_lines:
-        # tmp = cv2.line(tmp, tuple(pt1_line[0]), tuple(pt1_line[1]), (255, 255, 255), 3)
         for pt2_line in pt2_lines:
-            # tmp = cv2.line(tmp, tuple(pt2_line[0]), tuple(pt2_line[1]), (255, 255, 255), 3)
             point = line_intersection(pt1_line, pt2_line)
             result.append(point)
-    # pts = np.array(polygon, np.int32)
-    # pts = pts.reshape((-1, 1, 2))
-    # cv2.polylines(tmp, [pts], True, (0, 255, 255))
-    # cv2.imshow('asd', tmp)
-    # cv2.waitKey(0)
     return result
