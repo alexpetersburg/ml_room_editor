@@ -17,6 +17,7 @@ from shadows import transfer_shadows
 
 FLOOR_IDX = 3
 WALL_IDX = 0
+RUG_IDX = 28
 
 
 def multiply_texture(texture, scale):
@@ -24,7 +25,8 @@ def multiply_texture(texture, scale):
     return np.vstack([row]*scale)
 
 
-def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray, texture_angle=0) -> np.ndarray:
+def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray, texture_angle=0,
+                         apply_shadows: bool = True, replace_rugs: bool = False) -> np.ndarray:
     """
 
     Args:
@@ -32,6 +34,8 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray,
         mask: seg mask of floor
         texture: new floor texture
         texture_angle: angle of texture rotation
+        apply_shadows:
+        replace_rug: replace rug with texture
 
     Returns:
         Image with changed floor texture
@@ -43,6 +47,9 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray,
 
     vp1 = vpd.vps_2D[0]
     vp2 = vpd.vps_2D[1]
+    if replace_rugs:
+        mask = mask.copy()
+        mask = np.where(mask == RUG_IDX, FLOOR_IDX, mask)
     border = find_perspective_border(create_polygon(np.array(mask == FLOOR_IDX, dtype=np.uint8)), vp1, vp2, img.shape[:-1][::-1])
     center = tuple(map(operator.truediv, reduce(lambda x, y: map(operator.add, x, y), border), [len(border)] * 2))
     border = sorted(border, key=lambda coord: (-135 - math.degrees(math.atan2(*tuple(map(operator.sub, coord, center))[::-1]))) % 360, reverse=True)
@@ -55,12 +62,14 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray,
     alpha_mask[..., 1] = mask == FLOOR_IDX
     alpha_mask[..., 2] = mask == FLOOR_IDX
     result = img.copy() - img * alpha_mask + (warped_texture * alpha_mask)
-    result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=FLOOR_IDX)
+    if apply_shadows:
+        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=FLOOR_IDX)
 
     return result
 
 
-def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF', use_noise: bool = True) -> np.ndarray:
+def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF', use_noise: bool = True,
+                      apply_shadows: bool = True) -> np.ndarray:
     """
 
         Args:
@@ -68,6 +77,7 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
             mask: seg mask of floor
             color: 16-bit hex string
             use_noise: Use noise in color generation
+            apply_shadows:
 
         Returns:
             Image with changed floor texture
@@ -87,19 +97,22 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     alpha_mask[..., 1] = mask == WALL_IDX
     alpha_mask[..., 2] = mask == WALL_IDX
     result = img.copy() - img * alpha_mask + (color_image * alpha_mask)
-    result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                              dark_trash_scale=1.1, bright_trash_scale=1.5, max_shadow_darkness=0.4, blur_kernel=12)
+    if apply_shadows:
+        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
+                                  dark_trash_scale=1.1, bright_trash_scale=1.5, max_shadow_darkness=0.4, blur_kernel=12)
 
     return result
 
 
-def change_wall_texture(img: np.ndarray, mask: np.ndarray, texture:  np.ndarray) -> np.ndarray:
+def change_wall_texture(img: np.ndarray, mask: np.ndarray, texture:  np.ndarray,
+                        apply_shadows: bool = True) -> np.ndarray:
     """
 
         Args:
             img: orig img
             mask: seg mask of floor
             texture: new wall texture
+            apply_shadows: bool
 
         Returns:
             Image with changed wall texture
@@ -151,9 +164,9 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, texture:  np.ndarray)
         alpha_mask[..., 1] = wall_mask
         alpha_mask[..., 2] = wall_mask
         result = result - result * alpha_mask + (warped_texture * alpha_mask)
-
-    result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                              dark_trash_scale=1.3, bright_trash_scale=1.5, max_shadow_darkness=0.4, blur_kernel=12)
+    if apply_shadows:
+        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
+                                  dark_trash_scale=1.3, bright_trash_scale=1.5, max_shadow_darkness=0.4, blur_kernel=12)
     return result
 
 
