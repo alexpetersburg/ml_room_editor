@@ -16,7 +16,7 @@ python setup.py install
 cd ../..
 ```
 6) [Download](https://drive.google.com/drive/folders/1srniSE2JD6ptAwc_QRnpl7uQnB5jLNIZ) ScanNet folder and paste to `smartroom_ml/neurvps_utils/logs` folder
-7) [Download](https://github.com/SwinTransformer/storage/releases/download/v1.0.1/upernet_swin_tiny_patch4_window7_512x512.pth) segmentation model and paste to `smartroom_ml/mmsegmentation/checkpoints` folder
+7) [Download](https://github.com/SwinTransformer/storage/releases/download/v1.0.1/upernet_swin_base_patch4_window7_512x512.pth) segmentation model and paste to `smartroom_ml/mmsegmentation/checkpoints` folder
 8) [Download](https://drive.google.com/file/d/1fgAZbE70v8ghTZaj4WSHzSlNb5NJreus/view?usp=sharing) room layout model and paste to `smartroom_ml/lsun_room_master/ckpts` folder
 9) Install OneGan:
 ```shell
