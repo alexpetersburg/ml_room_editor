@@ -18,7 +18,6 @@ from smartroom_ml import neurvps
 import smartroom_ml.neurvps.models.vanishing_net as vn
 from smartroom_ml.neurvps.config import C, M
 from smartroom_ml.neurvps.utils import sample_sphere, sort_vps
-import matplotlib.pyplot as plt
 
 SMARTROOM_DIR = os.path.dirname(os.path.abspath(__file__))
 SEG_MODEL_CONFIG_PATH = os.path.join(SMARTROOM_DIR,'mmsegmentation', 'configs', 'swin',
@@ -33,9 +32,9 @@ VPS_MODEL_CHECKPOINT_PATH = os.path.join(SMARTROOM_DIR,'neurvps_utils', 'logs', 
 LAYOUT_MODEL_CHECKPOINT_PATH = os.path.join(SMARTROOM_DIR,'lsun_room_master', 'ckpts',
                                             'model_retrained.ckpt')
 
-PITCH_MODEL_CONFIG = Namespace(**{'mode': 'ResNet', 'dataset': 'interiornet', 'gpu_ids': None, 'isTrain': True,
-                                  'checkpoints_dir': os.path.join(SMARTROOM_DIR, 'UprightNet', 'checkpoints'),
-                                  'name': 'test_local'})
+# PITCH_MODEL_CONFIG = Namespace(**{'mode': 'ResNet', 'dataset': 'interiornet', 'gpu_ids': None, 'isTrain': True,
+#                                   'checkpoints_dir': os.path.join(SMARTROOM_DIR, 'UprightNet', 'checkpoints'),
+#                                   'name': 'test_local'})
 
 FLOOR_IDX = 3
 
@@ -58,11 +57,11 @@ def get_device():
     return device
 
 
-def get_pitch_model(config:Namespace = PITCH_MODEL_CONFIG):
-    global pitch_model
-    if pitch_model is None:
-        pitch_model = create_model(config, _isTrain=False)
-    return pitch_model
+# def get_pitch_model(config:Namespace = PITCH_MODEL_CONFIG):
+#     global pitch_model
+#     if pitch_model is None:
+#         pitch_model = create_model(config, _isTrain=False)
+#     return pitch_model
 
 
 def get_seg_model(config_path:str = SEG_MODEL_CONFIG_PATH, checkpoint_path:str = SEG_MODEL_CHECKPOINT_PATH):
@@ -109,18 +108,6 @@ def get_vps_model(config_path:str = VPS_MODEL_CONFIG_PATH, checkpoint_path:str =
     return vps_model
 
 
-def predict(image_path: str) -> (np.ndarray, float):
-    seg_model = get_seg_model()
-    pitch_model = get_pitch_model()
-    img = mmcv.imread(image_path)
-
-    result = inference_segmentor(seg_model, img)[0]
-    result_floor = np.where(result==FLOOR_IDX, result, 0)
-    transformed_img = inference_transform({'img': img})
-    _, _, pitch = pitch_model.infer_model(transformed_img.unsqueeze(0), 1)
-    return (result_floor, pitch)
-
-
 def predict_mask(image: (str, np.ndarray)) -> np.ndarray:
     seg_model = get_seg_model()
     if isinstance(image, str):
@@ -145,7 +132,7 @@ def predict_layout(image: (str, np.ndarray)) -> np.ndarray:
     return outputs
 
 
-def predict_vps(image: (str, np.ndarray)) -> np.ndarray:
+def predict_neurvps(image: (str, np.ndarray)) -> np.ndarray:
     model = get_vps_model()
     if isinstance(image, str):
         image = mmcv.imread(image)[:, :, :3]
@@ -194,7 +181,3 @@ def predict_vps(image: (str, np.ndarray)) -> np.ndarray:
     pixel = [(point[0] / scale + x_bias, point[1] / scale + y_bias) for point in pixel]
     pixel = sort_vps(pixel)
     return pixel
-
-
-if __name__ == "__main__":
-    print(predict('UprightNet/demo/demo/ADE_val_00000118.jpg'))

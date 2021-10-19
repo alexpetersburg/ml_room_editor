@@ -12,7 +12,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.util import random_noise
 
 from smartroom_ml.UprightNet.utils.image_transform import rotate_crop
-from smartroom_ml.inference import predict_mask, predict_layout, predict_vps
+from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
 from smartroom_ml.vanishing_point_transforms import find_perspective_border, create_polygon
 from smartroom_ml.shadows import transfer_shadows
 import matplotlib.pyplot as plt
@@ -27,7 +27,7 @@ FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47,
 
 def compute_vps(img, method='neurvps'):
     if method.lower() == 'neurvps':
-        return predict_vps(img)
+        return predict_neurvps(img)
     elif method.lower() == 'lsd':
         vpd = VPDetection(length_thresh=60, focal_length=max(img.shape) * 1.2)
         _ = vpd.find_vps(img)

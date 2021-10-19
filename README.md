@@ -5,8 +5,9 @@ Tested on python 3.8
 3) Install mmcv: `mmcv-full==1.3.0 -f https://download.openmmlab.com/mmcv/dist/cpu/torch1.8.0/index.html`
 4) Install mmsegmentation: 
 ```shell
-cd mmsegmentation
+cd smartroom_ml/mmsegmentation
 python setup.py install
+cd ../..
 ```
 5) Install VPDetection:
 ```shell
@@ -31,9 +32,10 @@ python setup.py install
 ```
 # Usage
 ```python
-from smartroom_ml.inference import predict, predict_mask
-segmentation_mask, pitch = predict(image_path)
-segmentation_mask = predict_mask(image_path) # predict_mask(image)
+from smartroom_ml.inference import predict_mask, predict_layout, predict_vps
+segmentation_mask = predict_mask(image)
+layout_mask = predict_layout(image)
+vp1, vp2, vp3 = predict_vps(image)
 
 -----------------------------------------------
 
@@ -49,6 +51,20 @@ result_wall = change_wall_texture(img=img, mask=mask, texture=wall_texture, appl
 
 
 from smartroom_ml.remove_objects import find_objects, remove_object_from_mask
+objects = find_objects(mask, FURNITURE_IDXS)
+specified_object_mask = remove_object_from_mask(mask=mask, object_mask=objects==OBJ_IDX, layout=layout,
+                                                floor_idx=FLOOR_IDX,
+                                                wall_idx=WALL_IDX)
+all_object_mask = remove_object_from_mask(mask=mask, object_mask=objects!=0, layout=layout,
+                                          floor_idx=FLOOR_IDX,
+                                          wall_idx=WALL_IDX)
+
+result_floor = change_floor_texture(img=img, mask=mask, texture=texture, texture_angle=0,
+                                    apply_shadows=True, replace_rug=True, object_mask=specified_object_mask)
+result_wall = change_wall_texture(img=result_floor, mask=mask, texture=wall_texture, apply_shadows=True, 
+                                  object_mask=specified_object_mask)
+
+
 
 
 ```
