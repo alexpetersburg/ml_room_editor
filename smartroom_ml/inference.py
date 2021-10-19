@@ -6,8 +6,10 @@ import numpy as np
 import mmcv
 import torch
 
-from smartroom_ml.UprightNet.data.image_folder import inference_transform
-from smartroom_ml.UprightNet.models.create_model import create_model
+from lu_vp_detect import VPDetection
+# from smartroom_ml.UprightNet.data.image_folder import inference_transform
+# from smartroom_ml.UprightNet.models.create_model import create_model
+from smartroom_ml.ar.fspy.camera_calibration import compute_camera_params
 from smartroom_ml.lsun_room_master.trainer import core
 from smartroom_ml.mmsegmentation.mmseg.apis import init_segmentor, inference_segmentor
 import torchvision.transforms.functional as F
@@ -181,3 +183,20 @@ def predict_neurvps(image: (str, np.ndarray)) -> np.ndarray:
     pixel = [(point[0] / scale + x_bias, point[1] / scale + y_bias) for point in pixel]
     pixel = sort_vps(pixel)
     return pixel
+
+
+def predict_camera_parameters(img_height: float, img_width: float, vps: list):
+    params = compute_camera_params(img_height, img_width, vp1=vps[0], vp2=vps[1])
+    if params is None:
+        return params
+    return {'verticalFieldOfView': params['verticalFieldOfView'],
+            'pos_arr': params['cameraTransform']['rows'],
+            'principalPoint': {"x": 0, "y": 0},
+            'imageWidth': img_width,
+            'imageHeight': img_height}
+
+
+def predict_lsd_vps(img):
+    vpd = VPDetection(length_thresh=60, focal_length=max(img.shape) * 1.2)
+    _ = vpd.find_vps(img)
+    return vpd.vps_2D

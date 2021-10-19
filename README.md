@@ -32,24 +32,24 @@ python setup.py install
 ```
 # Usage
 ```python
-from smartroom_ml.inference import predict_mask, predict_layout, predict_vps
+from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
 segmentation_mask = predict_mask(image)
 layout_mask = predict_layout(image)
-vp1, vp2, vp3 = predict_vps(image)
+vps = predict_neurvps(image)
 
 -----------------------------------------------
 
 from smartroom_ml.texture_transform_vps import change_floor_texture, change_wall_color, change_wall_texture
-result_floor = change_floor_texture(img=img, mask=mask, texture=texture, texture_angle=0,
+result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, texture=texture, texture_angle=0,
                                     apply_shadows=True, replace_rug=True, object_mask=None)
 
 # change wall color
-result_wall = change_wall_color(img=img, mask=mask, color='#A91D11', apply_shadows=True, object_mask=None)
+result_wall = change_wall_color(img=img, mask=segmentation_mask, color='#A91D11', apply_shadows=True, object_mask=None)
 
 # change wall texture
-result_wall = change_wall_texture(img=img, mask=mask, texture=wall_texture, apply_shadows=True, object_mask=None)
+result_wall = change_wall_texture(img=img, mask=segmentation_mask, vps=vps, texture=wall_texture, apply_shadows=True, object_mask=None)
 
-
+# remove objects
 from smartroom_ml.remove_objects import find_objects, remove_object_from_mask
 objects = find_objects(mask, FURNITURE_IDXS)
 specified_object_mask = remove_object_from_mask(mask=mask, object_mask=objects==OBJ_IDX, layout=layout,
@@ -59,11 +59,23 @@ all_object_mask = remove_object_from_mask(mask=mask, object_mask=objects!=0, lay
                                           floor_idx=FLOOR_IDX,
                                           wall_idx=WALL_IDX)
 
-result_floor = change_floor_texture(img=img, mask=mask, texture=texture, texture_angle=0,
+result_floor = change_floor_texture(img=img, mask=mask, vps=vps, texture=texture, texture_angle=0,
                                     apply_shadows=True, replace_rug=True, object_mask=specified_object_mask)
-result_wall = change_wall_texture(img=result_floor, mask=mask, texture=wall_texture, apply_shadows=True, 
+result_wall = change_wall_texture(img=result_floor, mask=mask, vps=vps, texture=wall_texture, apply_shadows=True, 
                                   object_mask=specified_object_mask)
 
+# calibrate treejs camera
+from smartroom_ml.inference import predict_camera_parameters
+
+params = predict_camera_parameters(img_height=h, img_width=w, vps=vps) 
+print(params)
+'''
+    {'verticalFieldOfView': ..,
+    'pos_arr': ..,
+    'principalPoint': {"x": 0, "y": 0},
+    'imageWidth': ..,
+    'imageHeight': ..,
+'''
 
 
 

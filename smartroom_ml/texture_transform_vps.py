@@ -6,8 +6,7 @@ from functools import reduce
 import cv2
 import os
 import numpy as np
-import skimage
-from lu_vp_detect import VPDetection
+
 from scipy.ndimage import gaussian_filter
 from skimage.util import random_noise
 
@@ -15,7 +14,7 @@ from smartroom_ml.UprightNet.utils.image_transform import rotate_crop
 from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
 from smartroom_ml.vanishing_point_transforms import find_perspective_border, create_polygon
 from smartroom_ml.shadows import transfer_shadows
-import matplotlib.pyplot as plt
+
 
 FLOOR_IDX = 3
 WALL_IDX = 0
@@ -25,26 +24,18 @@ FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47,
                   125, 127, 129, 130, 131, 132, 135, 137, 138, 139, 141, 142, 143, 145, 147, RUG_IDX]
 
 
-def compute_vps(img, method='neurvps'):
-    if method.lower() == 'neurvps':
-        return predict_neurvps(img)
-    elif method.lower() == 'lsd':
-        vpd = VPDetection(length_thresh=60, focal_length=max(img.shape) * 1.2)
-        _ = vpd.find_vps(img)
-        return vpd.vps_2D
-
-
 def multiply_texture(texture, scale):
     row = np.hstack([texture]*scale)
     return np.vstack([row]*scale)
 
 
-def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray, texture_angle=0,
+def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: np.ndarray, texture_angle=0,
                          apply_shadows: bool = True, replace_rugs: bool = False,
                          object_mask: np.ndarray = None) -> np.ndarray:
     """
 
     Args:
+        vps: list of 2 vanishing points
         img: orig img
         mask: seg mask of floor
         texture: new floor texture
@@ -58,7 +49,6 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, texture: np.ndarray,
     """
     # Transform texture
     texture = rotate_crop(texture, texture_angle)
-    vps = compute_vps(img, 'neurvps')
     vp1 = vps[0]
     vp2 = vps[1]
     if replace_rugs:
@@ -125,12 +115,13 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     return result
 
 
-def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray,texture:  np.ndarray,
+def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, vps: list, texture:  np.ndarray,
                         apply_shadows: bool = True, texture_angle: float = 0,
                         object_mask: np.ndarray = None) -> np.ndarray:
     """
 
         Args:
+            vps: list of 3 vanishing points
             img: orig img
             mask: seg mask of floor
             layout: layout mask of room
@@ -141,7 +132,6 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray,te
             Image with changed wall texture
         """
     texture = rotate_crop(texture, texture_angle)
-    vps = compute_vps(img, 'neurvps')
     vp1 = vps[0]
     vp2 = vps[1]
     vp3 = vps[2]
