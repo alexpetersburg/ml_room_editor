@@ -96,7 +96,7 @@ def get_vps_model(config_path:str = VPS_MODEL_CONFIG_PATH, checkpoint_path:str =
         else:
             raise NotImplementedError
 
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         model = neurvps.models.VanishingNet(
             model, C.model.output_stride, C.model.upsample_scale
         )
