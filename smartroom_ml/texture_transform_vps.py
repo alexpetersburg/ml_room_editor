@@ -10,7 +10,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from skimage.util import random_noise
 
-from smartroom_ml.UprightNet.utils.image_transform import rotate_crop
+from smartroom_ml.utils.image_transform import rotate_crop
 from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
 from smartroom_ml.vanishing_point_transforms import find_perspective_border, create_polygon
 from smartroom_ml.shadows import transfer_shadows
