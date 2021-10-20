@@ -28,7 +28,7 @@ cd ..
 ```
 10) install package
 ```shell
-python setup.py install
+pip install -e .
 ```
 # Usage
 ```python
