@@ -188,6 +188,11 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, v
 
 if __name__ == "__main__":
     from smartroom_ml.remove_objects import find_objects, remove_object_from_mask
+    from smartroom_ml.inference import predict_camera_parameters
+
+    h, w, x1, y1, x2, y2 = 1170, 780, -118.47391956827687, 384.3497574239535, 1080.5994814938165, 397.6670855398042
+    print(predict_camera_parameters(h, w, [(x1, y1), (x2, y2)]))
+    exit()
     for name in os.listdir(os.path.join('neurvps_utils', 'demo')):
         print(name)
         if 'png' in name or '0628' in name:

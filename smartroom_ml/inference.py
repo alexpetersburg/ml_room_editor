@@ -9,7 +9,7 @@ import torch
 from lu_vp_detect import VPDetection
 # from smartroom_ml.UprightNet.data.image_folder import inference_transform
 # from smartroom_ml.UprightNet.models.create_model import create_model
-from smartroom_ml.ar.fspy.camera_calibration import compute_camera_params
+from smartroom_ml.ar.camera_calibration import compute_camera_params
 from smartroom_ml.lsun_room_master.trainer import core
 from smartroom_ml.mmsegmentation.mmseg.apis import init_segmentor, inference_segmentor
 import torchvision.transforms.functional as F
