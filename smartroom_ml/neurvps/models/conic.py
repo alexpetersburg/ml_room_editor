@@ -4,20 +4,23 @@ from torch.nn.modules.utils import _pair
 
 from smartroom_ml.neurvps.config import M
 from smartroom_ml.neurvps.models.deformable import DeformConv
+from torchvision.ops import DeformConv2d
 
 
 class ConicConv(nn.Module):
     def __init__(self, c_in, c_out, kernel_size=3, bias=False):
         super().__init__()
-        self.deform_conv = DeformConv(
-            c_in,
-            c_out,
-            kernel_size=kernel_size,
-            stride=1,
-            padding=1,
-            im2col_step=M.im2col_step,
-            bias=bias,
-        )
+        # self.deform_conv = DeformConv(
+        #     c_in,
+        #     c_out,
+        #     kernel_size=kernel_size,
+        #     stride=1,
+        #     padding=1,
+        #     im2col_step=M.im2col_step,
+        #     bias=bias,
+        # )
+        self.deform_conv = DeformConv2d(in_channels=c_in, out_channels=c_out, kernel_size=kernel_size, stride=1,
+                                        padding=1, dilation=1, groups=1, bias=bias)
         self.kernel_size = _pair(kernel_size)
 
     def forward(self, input, vpts):
