@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.util import random_noise
 
 from smartroom_ml.utils.image_transform import rotate_crop
-from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
+from smartroom_ml.inference import predict_mask, predict_layout
 from smartroom_ml.vanishing_point_transforms import find_perspective_border, create_polygon
 from smartroom_ml.shadows import transfer_shadows
 
@@ -57,7 +57,7 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
     if object_mask is not None:
         replace_mask = object_mask
     else:
-        replace_mask= mask
+        replace_mask = mask
     border = find_perspective_border(create_polygon(np.array(replace_mask == FLOOR_IDX, dtype=np.uint8)), vp1, vp2, img.shape[:-1][::-1])
     center = tuple(map(operator.truediv, reduce(lambda x, y: map(operator.add, x, y), border), [len(border)] * 2))
     border = sorted(border, key=lambda coord: (-135 - math.degrees(math.atan2(*tuple(map(operator.sub, coord, center))[::-1]))) % 360, reverse=True)

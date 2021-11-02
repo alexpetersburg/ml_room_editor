@@ -95,6 +95,9 @@ def find_intersection_lines(polygon, pt, img_shape):
                     result.append((condidate, pt))
             previous_intersect = intersect
             previous_condidate = condidate
+    if len(result) == 0:
+        return [((0,0), (0, img_shape[1])),
+                ((img_shape[0], 0), (img_shape[0],img_shape[1]))]
     if len(result) < 2:
         result.append((previous_condidate, pt))
     return result

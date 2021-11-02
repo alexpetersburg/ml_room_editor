@@ -26,7 +26,14 @@ cd OneGan
 python setup.py install
 cd ..
 ```
-10) install package
+10) 
+```shell
+cd smartroom_ml/lama
+curl -L $(yadisk-direct https://disk.yandex.ru/d/ouP6l8VJ0HpMZg) -o big-lama.zip
+unzip big-lama.zip
+cd ../..
+```
+11) install package
 ```shell
 pip install -e .
 ```
