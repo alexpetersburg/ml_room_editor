@@ -22,9 +22,9 @@ def find_horizontal_intersection_lines(polygon, img_shape):
     shapely_poly = Polygon(polygon)
     previous_intersect = None
     previous_condidate = None
-    for y in range(0, img_shape[0]+1, stride):
+    for y in range(0, img_shape[1]+1, stride):
         condidate = (0, y)
-        pt = (img_shape[1], y)
+        pt = (img_shape[0], y)
         line = LineString([condidate, pt])
         intersect = shapely_poly.intersects(line)
         if previous_intersect is None and intersect:
@@ -38,7 +38,7 @@ def find_horizontal_intersection_lines(polygon, img_shape):
         previous_intersect = intersect
         previous_condidate = condidate
     if len(result) < 2:
-        result.append((previous_condidate, (img_shape[1], img_shape[0])))
+        result.append((previous_condidate, (img_shape[0], img_shape[1])))
     return result
 
 

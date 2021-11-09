@@ -163,7 +163,7 @@ def predict_layout(image: (str, np.ndarray)) -> np.ndarray:
     tensor = F.normalize(tensor, mean=0.5, std=0.5)
     _, outputs = get_layout_model()(tensor.unsqueeze(0).cpu())
     outputs = outputs.cpu()[0].numpy()
-    outputs = cv2.resize(np.array(outputs, dtype=np.uint8), shape[:2])
+    outputs = cv2.resize(np.array(outputs, dtype=np.uint8), shape[:2], interpolation=cv2.INTER_NEAREST)
     return outputs
 
 

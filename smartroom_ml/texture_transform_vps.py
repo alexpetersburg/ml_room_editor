@@ -143,8 +143,7 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, v
         replace_mask = mask
     result = img.copy()
     for idx, wall in walls:
-        wall_mask = gaussian_filter(np.logical_and(layout == idx, replace_mask == WALL_IDX).astype(np.uint8) * 255,
-                                    sigma=2) / 255 > 0.9
+        wall_mask = np.logical_and(layout == idx, replace_mask == WALL_IDX).astype(np.uint8)
         if wall_mask.sum() == 0:
             continue
         wall_polygon = create_polygon(np.array(wall_mask, dtype=np.uint8))
