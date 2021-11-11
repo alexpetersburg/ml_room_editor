@@ -7,7 +7,6 @@ import cv2
 import os
 import numpy as np
 
-from scipy.ndimage import gaussian_filter
 from skimage.util import random_noise
 
 from smartroom_ml.utils.image_transform import rotate_crop
@@ -71,7 +70,7 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
     alpha_mask[..., 2] = replace_mask == FLOOR_IDX
     result = img.copy() - img * alpha_mask + (warped_texture * alpha_mask)
     if apply_shadows:
-        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=FLOOR_IDX)
+        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=FLOOR_IDX, blur_kernel=int(25 * max(img.shape)/800))
     return result
 
 
@@ -110,7 +109,8 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     result = img.copy() - img * alpha_mask + (color_image * alpha_mask)
     if apply_shadows:
         result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                                  dark_trash_scale=1.1, bright_trash_scale=1.5, max_shadow_darkness=0.4, blur_kernel=12)
+                                  dark_trash_scale=1.1, bright_trash_scale=1.5, max_shadow_darkness=0.4,
+                                  blur_kernel=int(12 * max(img.shape)/800))
 
     return result
 
@@ -186,8 +186,8 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, v
 
 
 if __name__ == "__main__":
-    from smartroom_ml.remove_objects import find_objects, remove_object_from_mask
-    from smartroom_ml.inference import predict_camera_parameters
+    from smartroom_ml.remove_objects import find_objects, remove_object_from_mask, remove_objects_lama
+    from smartroom_ml.inference import predict_camera_parameters, predict_lama, predict_neurvps
 
     h, w, x1, y1, x2, y2 = 1170, 780, -118.47391956827687, 384.3497574239535, 1080.5994814938165, 397.6670855398042
     print(predict_camera_parameters(h, w, [(x1, y1), (x2, y2)]))

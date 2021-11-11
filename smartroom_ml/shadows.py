@@ -4,7 +4,8 @@ import numpy as np
 
 def transfer_shadows(source_img: np.ndarray, target_img: np.ndarray, mask: np.ndarray,
                      mask_target: int = 3, dark_trash_scale: float = 1.5, bright_trash_scale: float = 1.5,
-                     blur_kernel: int = 25, max_shadow_darkness: float = 0.3) -> np.ndarray:
+                     blur_kernel: int = 25, max_shadow_darkness: float = 0.3,
+                     bright_weight: float = 0.3) -> np.ndarray:
     """
 
     Args:
@@ -16,6 +17,7 @@ def transfer_shadows(source_img: np.ndarray, target_img: np.ndarray, mask: np.nd
         bright_trash_scale: how much more bright should be pixel to get into bright mask
         blur_kernel: blur kernel size
         max_shadow_darkness: maximum shading scale of target image
+        bright_weight:  maximum bright scale of target image higher - brighter
 
     Returns:
 
@@ -50,7 +52,7 @@ def transfer_shadows(source_img: np.ndarray, target_img: np.ndarray, mask: np.nd
 
     bright_mask = np.where(blur_gray_source_img > thresh * bright_trash_scale, blur_gray_source_img, 0) * alpha_mask[...,0]
     bright_mask = cv2.blur(bright_mask, (int(blur_kernel), int(blur_kernel)), 0)
-    bright_target_img = cv2.addWeighted(target_img, 1, cv2.cvtColor(bright_mask, cv2.COLOR_GRAY2RGB), 0.3, 0)
+    bright_target_img = cv2.addWeighted(target_img, 1, cv2.cvtColor(bright_mask, cv2.COLOR_GRAY2RGB), bright_weight, 0)
 
     hsv_bright_target_img = cv2.cvtColor(bright_target_img, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(hsv_bright_target_img)
