@@ -520,9 +520,9 @@ var Solver = /** @class */ (function () {
         cameraParameters.verticalFieldOfView = this.computeFieldOfView(imageWidth, imageHeight, relativeFocalLength, true);
         // compute camera rotation matrix
         var cameraRotationMatrix = this.computeCameraRotationMatrix(vp1, vp2, relativeFocalLength, principalPoint);
-        if (Math.abs(cameraRotationMatrix.determinant - 1) > 1e-7) { // TODO: eps
-            console.log(Math.abs(cameraRotationMatrix.determinant - 1));
-            console.log(2);
+        if (Math.abs(cameraRotationMatrix.determinant - 1) > 1e-2) { // TODO: eps
+            console.log(cameraRotationMatrix.determinant.toFixed(5));
+            console.log('wrong cameraRotationMatrix.determinant');
             return null;
         }
         cameraParameters.viewTransform = axisAssignmentMatrix.leftMultiplied(cameraRotationMatrix);
