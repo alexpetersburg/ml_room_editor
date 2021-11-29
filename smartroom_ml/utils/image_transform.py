@@ -315,6 +315,78 @@ def demo():
         cv2.imshow("Rotated Image", image_rotated)
         cv2.imshow("Cropped Image", image_rotated_cropped)
 
+
+def find_layout_polygons(layout_mask, blur_kernel=15, approx_strength=0.01):
+    def pad_with(vector, pad_width, iaxis, kwargs):
+        pad_value = kwargs.get('padder', 10)
+        vector[:pad_width[0]] = pad_value
+        vector[-pad_width[1]:] = pad_value
+
+    layout = np.pad(layout_mask, 2, pad_with, padder=-1)
+    layout_segments = {}
+    for plane_class in np.unique(layout_mask):
+        wall = ((layout == plane_class)).astype(np.uint8)
+
+        # find largest connected area
+        conn = cv2.connectedComponents(wall)
+        u, count = np.unique(conn[1], return_counts=True)
+        count_sort_ind = np.argsort(-count)
+        wall = (conn[1] == np.delete(u[count_sort_ind], np.where(u[count_sort_ind] == 0))[0]).astype(np.uint8)
+
+        wall = cv2.GaussianBlur(wall, (blur_kernel, blur_kernel), 0)
+
+        contours, _ = cv2.findContours(wall, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contour = contours[0]
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, approx_strength * perimeter, True)
+        approx = [{'point': [max(0, min(point[0][0] - 2, layout_mask.shape[1])),
+                             max(0, min(point[0][1] - 2, layout_mask.shape[0]))], 'point_index': i,
+                   'point_classes': [plane_class]}
+                  for i, point in enumerate(approx)]
+        layout_segments[plane_class] = approx
+
+    layout_segments = fuse_points(layout_segments, max(layout_mask.shape) * 0.01)
+    for layout_class, points in layout_segments.items():
+        layout_segments[layout_class] = [{'x': point['point'][0] / layout_mask.shape[1],
+                                          'y': point['point'][1] / layout_mask.shape[0],
+                                          'point_classes': point['point_classes']} for point in points]
+    #     print(layout_segments[1])
+    #     print(layout_segments[2])
+    return layout_segments
+
+
+def fuse_points(layout_segments, d):
+    def dist2(p1, p2):
+        return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
+    points = [item for sublist in layout_segments.values() for item in sublist]
+    d2 = d * d
+    n = len(points)
+    taken = [False] * n
+    for i in range(n):
+        if not taken[i]:
+            count = 1
+            point = points[i]
+            update_indexes = [[point['point_index'], point['point_classes'][0]]]
+            classes = point['point_classes']
+            taken[i] = True
+            for j in range(i + 1, n):
+                if taken[j]:
+                    continue
+                if dist2(points[i]['point'], points[j]['point']) < d2:
+                    update_indexes.append([points[j]['point_index'], points[j]['point_classes'][0]])
+                    classes.append(points[j]['point_classes'][0])
+                    point['point'][0] += points[j]['point'][0]
+                    point['point'][1] += points[j]['point'][1]
+                    count += 1
+                    taken[j] = True
+            point['point'][0] /= count
+            point['point'][1] /= count
+            for i, layout_class in update_indexes:
+                layout_segments[layout_class][i]['point'] = point['point']
+                layout_segments[layout_class][i]['point_classes'] = list(set(classes))
+    return layout_segments
+
+
 if __name__ == "__main__":
     image = cv2.imread("../demo/demo/ADE_val_00000118.jpg")
     result = rotate_crop(image, 30)

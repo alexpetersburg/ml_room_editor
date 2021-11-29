@@ -28,6 +28,7 @@ from smartroom_ml import neurvps
 import smartroom_ml.neurvps.models.vanishing_net as vn
 from smartroom_ml.neurvps.config import C, M
 from smartroom_ml.neurvps.utils import sample_sphere, sort_vps
+from smartroom_ml.utils.image_transform import find_layout_polygons
 
 SMARTROOM_DIR = os.path.dirname(os.path.abspath(__file__))
 SEG_MODEL_CONFIG_PATH = os.path.join(SMARTROOM_DIR,'mmsegmentation', 'configs', 'swin',
@@ -155,7 +156,16 @@ def predict_mask(image: (str, np.ndarray)) -> np.ndarray:
     return result
 
 
-def predict_layout(image: (str, np.ndarray)) -> np.ndarray:
+def predict_layout(image: (str, np.ndarray)) -> [np.ndarray, dict]:
+    """
+    Compute layout mask and it's segment polygons
+    Args:
+        image: np.ndarray
+
+    Returns:
+        layout_mask: np.ndarray
+        layout_polygons: {segment_class: [points]} e.g. {1: [{'x': 0.0030643513789581204, 'y': 0.0, 'point_classes': [1]}, ...}
+    """
     tensor = Image.fromarray(image).convert('RGB')
     shape = tensor.size
     tensor = F.to_tensor(tensor)
@@ -163,8 +173,9 @@ def predict_layout(image: (str, np.ndarray)) -> np.ndarray:
     tensor = F.normalize(tensor, mean=0.5, std=0.5)
     _, outputs = get_layout_model()(tensor.unsqueeze(0).cpu())
     outputs = outputs.cpu()[0].numpy()
+    polygons = find_layout_polygons(outputs, approx_strength=0.022)
     outputs = cv2.resize(np.array(outputs, dtype=np.uint8), shape[:2], interpolation=cv2.INTER_NEAREST)
-    return outputs
+    return outputs, polygons
 
 
 def predict_neurvps(image: (str, np.ndarray)) -> np.ndarray:

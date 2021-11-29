@@ -41,7 +41,9 @@ pip install -e .
 ```python
 from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
 segmentation_mask = predict_mask(image)
-layout_mask = predict_layout(image)
+layout_mask, layout_polygons = predict_layout(image) # layout_polygons: {segment_class: [points]} 
+                                                     # e.g. {1: [{'x': 0.0030643513789581204, 'y': 0.0, 
+                                                     #            'point_classes': [1]}, ...}
 vps = predict_neurvps(image)
 
 -----------------------------------------------
