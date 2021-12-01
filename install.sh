@@ -10,7 +10,7 @@ python setup.py build
 python setup.py install
 cd ../..
 
-git clone hhttps://github.com/leVirve/OneGan.git
+git clone https://github.com/leVirve/OneGan.git
 cd OneGan || return 1
 python setup.py install
 cd ..
