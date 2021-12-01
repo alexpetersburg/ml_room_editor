@@ -4,6 +4,8 @@ Tested on python 3.8
 2) sh install.sh
    
 or
+
+
 2) `pip install -r requirements.txt`
 3) Install mmcv: `mmcv-full==1.3.0 -f https://download.openmmlab.com/mmcv/dist/cpu/torch1.8.0/index.html`
 4) Install mmsegmentation: 
