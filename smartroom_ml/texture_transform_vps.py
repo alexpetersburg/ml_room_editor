@@ -123,6 +123,7 @@ def polygons_to_mask(polygons, mask_shape):
                          -1, (indx), -1)
     return mask
 
+
 def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: Union[np.ndarray, dict], vps: list,
                         texture:  np.ndarray,
                         apply_shadows: bool = True, texture_angle: float = 0,
