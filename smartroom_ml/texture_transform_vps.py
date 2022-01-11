@@ -115,6 +115,13 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     return result
 
 
+def polygons_to_mask(polygons, mask_shape):
+    mask = np.full(mask_shape, 255, dtype=np.uint8)
+    for indx, polygon in polygons.items():
+        cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon])],
+                         -1, (indx), -1)
+    return mask
+
 def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, vps: list, texture:  np.ndarray,
                         apply_shadows: bool = True, texture_angle: float = 0,
                         object_mask: np.ndarray = None) -> np.ndarray:
@@ -135,7 +142,10 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, v
     vp1 = vps[0]
     vp2 = vps[1]
     vp3 = vps[2]
-
+    if isinstance(layout, dict):
+        layout_mask = polygons_to_mask(layout, mask.shape)
+    else:
+        layout_mask = layout
     walls = [(0, 'frontal'), (1, 'left'), (2, 'right')]
     if object_mask is not None:
         replace_mask = object_mask
@@ -143,7 +153,7 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, v
         replace_mask = mask
     result = img.copy()
     for idx, wall in walls:
-        wall_mask = np.logical_and(layout == idx, replace_mask == WALL_IDX).astype(np.uint8)
+        wall_mask = np.logical_and(layout_mask == idx, replace_mask == WALL_IDX).astype(np.uint8)
         if wall_mask.sum() == 0:
             continue
         wall_polygon = create_polygon(np.array(wall_mask, dtype=np.uint8))
