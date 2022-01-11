@@ -63,7 +63,8 @@ result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, te
 result_wall = change_wall_color(img=img, mask=segmentation_mask, color='#A91D11', apply_shadows=True, object_mask=None)
 
 # change wall texture
-result_wall = change_wall_texture(img=img, mask=segmentation_mask, vps=vps, texture=wall_texture, 
+result_wall = change_wall_texture(img=img, mask=segmentation_mask, vps=vps, layout=layout,
+                                  texture=wall_texture, 
                                   apply_shadows=True, object_mask=None)
 
 # remove objects

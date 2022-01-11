@@ -2,6 +2,7 @@ import math
 import operator
 import traceback
 from functools import reduce
+from typing import Union
 
 import cv2
 import os
@@ -122,7 +123,8 @@ def polygons_to_mask(polygons, mask_shape):
                          -1, (indx), -1)
     return mask
 
-def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: np.ndarray, vps: list, texture:  np.ndarray,
+def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: Union[np.ndarray, dict], vps: list,
+                        texture:  np.ndarray,
                         apply_shadows: bool = True, texture_angle: float = 0,
                         object_mask: np.ndarray = None) -> np.ndarray:
     """
