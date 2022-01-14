@@ -3,7 +3,7 @@ import numpy as np
 from smartroom_ml.inference import predict_lama
 
 
-def find_objects(mask: np.ndarray, target_classes: list) -> np.ndarray:
+def find_objects(mask: np.ndarray, target_classes: list, merge_objects: bool = True) -> np.ndarray:
     orig_shape = mask.shape
     scale = 1
 
@@ -21,17 +21,31 @@ def find_objects(mask: np.ndarray, target_classes: list) -> np.ndarray:
                     active_object_mapper[active_object] = active_object
                 result_mask[i, j] = 0
             elif mask[i, j] in target_classes:
-                if i > 0 and result_mask[i - 1, j] != 0:
-                    if result_mask[i - 1, j] < active_object:
-                        active_object_mapper[active_object] = result_mask[i - 1, j]
-                        # result_mask = np.where(result_mask == active_object, result_mask[i - 1, j], result_mask)
-                        active_object = result_mask[i - 1, j]
-                    elif result_mask[i -1, j] > active_object:
-                        # result_mask = np.where(result_mask == result_mask[i - 1, j], active_object, result_mask)
-                        if active_object_mapper.get(result_mask[i -1, j]) is not None and \
-                                active_object_mapper.get(result_mask[i -1, j]) > active_object:
-                            active_object_mapper[result_mask[i -1, j]] = active_object
-
+                if merge_objects:
+                    if i > 0 and result_mask[i - 1, j] != 0:
+                        if result_mask[i - 1, j] < active_object:
+                            active_object_mapper[active_object] = result_mask[i - 1, j]
+                            # result_mask = np.where(result_mask == active_object, result_mask[i - 1, j], result_mask)
+                            active_object = result_mask[i - 1, j]
+                        elif result_mask[i -1, j] > active_object:
+                            # result_mask = np.where(result_mask == result_mask[i - 1, j], active_object, result_mask)
+                            if active_object_mapper.get(result_mask[i -1, j]) is not None and \
+                                    active_object_mapper.get(result_mask[i -1, j]) > active_object:
+                                active_object_mapper[result_mask[i -1, j]] = active_object
+                else:
+                    if j > 0 and mask[i, j - 1] != mask[i, j]:
+                        active_object = result_mask.max() + 1
+                        active_object_mapper[active_object] = active_object
+                    if i > 0 and mask[i - 1, j] == mask[i, j]:
+                        if result_mask[i - 1, j] < active_object:
+                            active_object_mapper[active_object] = result_mask[i - 1, j]
+                            # result_mask = np.where(result_mask == active_object, result_mask[i - 1, j], result_mask)
+                            active_object = result_mask[i - 1, j]
+                        elif result_mask[i - 1, j] > active_object:
+                            # result_mask = np.where(result_mask == result_mask[i - 1, j], active_object, result_mask)
+                            if active_object_mapper.get(result_mask[i - 1, j]) is not None and \
+                                    active_object_mapper.get(result_mask[i - 1, j]) > active_object:
+                                active_object_mapper[result_mask[i - 1, j]] = active_object
                 result_mask[i, j] = active_object
         active_object = result_mask.max() + 1
         active_object_mapper[active_object] = active_object

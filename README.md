@@ -69,7 +69,7 @@ result_wall = change_wall_texture(img=img, mask=segmentation_mask, vps=vps, layo
 
 # remove objects
 from smartroom_ml.remove_objects import find_objects, remove_object_from_mask
-objects = find_objects(segmentation_mask, FURNITURE_IDXS)
+objects = find_objects(segmentation_mask, FURNITURE_IDXS, merge_objects)
 specified_object_mask = remove_object_from_mask(mask=segmentation_mask, object_mask=objects==OBJ_IDX, layout=layout_mask,
                                                 floor_idx=FLOOR_IDX,
                                                 wall_idx=WALL_IDX)
