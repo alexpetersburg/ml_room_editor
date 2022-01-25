@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from smartroom_ml.inference import predict_lama
+from smartroom_ml.texture_transform_vps import polygons_to_mask
 
 
 def find_objects(mask: np.ndarray, target_classes: list, merge_objects: bool = True) -> np.ndarray:
@@ -67,9 +68,13 @@ def find_objects(mask: np.ndarray, target_classes: list, merge_objects: bool = T
 
 def remove_object_from_mask(mask, object_mask, layout, floor_idx, wall_idx):
     mapper = {0: wall_idx, 1: wall_idx, 2:wall_idx, 3:floor_idx, 4: -1}
-    floor_wall_layout = np.copy(layout)
+    if isinstance(layout, dict):
+        layout_mask = polygons_to_mask(layout, mask.shape)
+    else:
+        layout_mask = layout
+    floor_wall_layout = np.copy(layout_mask)
     for k, v in mapper.items():
-        floor_wall_layout[layout == k] = v
+        floor_wall_layout[layout_mask == k] = v
     replacement_mask = object_mask * (floor_wall_layout != -1)
     return mask - mask * replacement_mask + replacement_mask * floor_wall_layout
 
