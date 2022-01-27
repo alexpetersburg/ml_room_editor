@@ -18,6 +18,7 @@ from smartroom_ml.shadows import transfer_shadows
 
 FLOOR_IDX = 3
 WALL_IDX = 0
+LAYOUT_WALL_INDEXES = [0, 1, 2]
 RUG_IDX = 28
 FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47, 50, 51, 56, 57, 62, 64, 65, 67, 70,
                   73, 74, 75, 77, 78, 81, 89, 92, 97, 98, 99, 107, 108, 110, 111, 112, 115, 117, 119, 120, 122, 124,
@@ -76,7 +77,8 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
 
 
 def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF', use_noise: bool = True,
-                      apply_shadows: bool = True, object_mask: np.ndarray = None) -> np.ndarray:
+                      apply_shadows: bool = True, object_mask: np.ndarray = None,
+                      layout_polygons: dict = None) -> np.ndarray:
     """
 
         Args:
@@ -85,6 +87,8 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
             color: 16-bit hex string
             use_noise: Use noise in color generation
             apply_shadows:
+            object_mask:
+            layout_polygons:
 
         Returns:
             Image with changed floor texture
@@ -103,6 +107,10 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
         replace_mask = object_mask
     else:
         replace_mask = mask
+    if layout_polygons is not None and isinstance(layout_polygons, dict):
+        layout_mask = polygons_to_mask(polygons, mask.shape)
+        layout_mask_walls = np.isin(layout_mask, LAYOUT_WALL_INDEXES)
+        replace_mask = ((replace_mask + 1) * layout_mask_walls * (WALL_IDX + 1)) - 1
     alpha_mask = np.zeros([*replace_mask.shape, 3], dtype=np.uint8)
     alpha_mask[..., 0] = replace_mask == WALL_IDX
     alpha_mask[..., 1] = replace_mask == WALL_IDX
