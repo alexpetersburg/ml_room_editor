@@ -108,7 +108,7 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     else:
         replace_mask = mask
     if layout_polygons is not None and isinstance(layout_polygons, dict):
-        layout_mask = polygons_to_mask(polygons, mask.shape)
+        layout_mask = polygons_to_mask(layout_polygons, mask.shape)
         layout_mask_walls = np.isin(layout_mask, LAYOUT_WALL_INDEXES)
         replace_mask = ((replace_mask + 1) * layout_mask_walls * (WALL_IDX + 1)) - 1
     alpha_mask = np.zeros([*replace_mask.shape, 3], dtype=np.uint8)
