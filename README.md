@@ -26,7 +26,6 @@ cd ../..
 8) [Download](https://drive.google.com/file/d/1fgAZbE70v8ghTZaj4WSHzSlNb5NJreus/view?usp=sharing) room layout model and paste to `smartroom_ml/lsun_room_master/ckpts` folder
 9) Install OneGan:
 ```shell
-git clone https://github.com/leVirve/OneGan.git
 cd OneGan
 python setup.py install
 cd ..
