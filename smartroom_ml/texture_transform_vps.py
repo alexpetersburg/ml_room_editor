@@ -72,7 +72,8 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
     alpha_mask[..., 2] = replace_mask == FLOOR_IDX
     result = img.copy() - img * alpha_mask + (warped_texture * alpha_mask)
     if apply_shadows:
-        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=FLOOR_IDX, blur_kernel=int(25 * max(img.shape)/800))
+        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=FLOOR_IDX,
+                                  blur_kernel=int(25 * max(img.shape)/800))
     return result
 
 
@@ -118,8 +119,8 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     result = img.copy() - img * alpha_mask + (color_image * alpha_mask)
     if apply_shadows:
         result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                                  dark_trash_scale=1.1, bright_trash_scale=1.5, max_shadow_darkness=0.4,
-                                  blur_kernel=int(12 * max(img.shape)/800))
+                                  dark_trash_scale=1.3, bright_trash_scale=1.5,
+                                  blur_kernel=int(10 * max(img.shape)/800))
 
     return result
 
@@ -202,7 +203,8 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: Union[np.ndar
         result = result - result * alpha_mask + (warped_texture * alpha_mask)
     if apply_shadows:
         result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                                  dark_trash_scale=1.3, bright_trash_scale=1.5, max_shadow_darkness=0.4, blur_kernel=12)
+                                  dark_trash_scale=1.3, bright_trash_scale=1.5,
+                                  blur_kernel=int(10 * max(img.shape)/800))
     return result
 
 

@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
+from blend_modes import multiply
 
 
 def transfer_shadows(source_img: np.ndarray, target_img: np.ndarray, mask: np.ndarray,
                      mask_target: int = 3, dark_trash_scale: float = 1.5, bright_trash_scale: float = 1.5,
-                     blur_kernel: int = 25, max_shadow_darkness: float = 0.3,
-                     bright_weight: float = 0.3) -> np.ndarray:
+                     blur_kernel: int = 25, bright_weight: float = 0.3) -> np.ndarray:
     """
 
     Args:
@@ -16,7 +16,6 @@ def transfer_shadows(source_img: np.ndarray, target_img: np.ndarray, mask: np.nd
         dark_trash_scale: how much more dark should be pixel to get into dark mask
         bright_trash_scale: how much more bright should be pixel to get into bright mask
         blur_kernel: blur kernel size
-        max_shadow_darkness: maximum shading scale of target image
         bright_weight:  maximum bright scale of target image higher - brighter
 
     Returns:
@@ -40,27 +39,28 @@ def transfer_shadows(source_img: np.ndarray, target_img: np.ndarray, mask: np.nd
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.
     thresh = bin_centers[np.argmax(hist)]
 
-    dark_mask = np.where(blur_gray_source_img < thresh / dark_trash_scale, blur_gray_source_img, 0) * alpha_mask[...,0]
+    gaussian_kernel = blur_kernel * 5
+    gaussian_kernel = gaussian_kernel + 1 if gaussian_kernel % 2 == 0 else gaussian_kernel
+
+    dark_mask = np.where(blur_gray_source_img < (thresh / dark_trash_scale), gray_source_img, 0) * alpha_mask[..., 0]
     dark_mask = np.where(dark_mask == 0, 255, dark_mask)
-    dark_mask = gray_source_img - gray_source_img * alpha_mask[...,0] + dark_mask * alpha_mask[...,0]
-    dark_mask = cv2.blur(dark_mask, (int(blur_kernel), int(blur_kernel)), 0)
-    dark_mask = dark_mask*alpha_mask[...,0]
-    X_std = (dark_mask - dark_mask.min()) / (thresh - dark_mask.min())
-    min_scale, max_scale = max_shadow_darkness, 1
-    dark_mask = (X_std * (max_scale - min_scale) + min_scale)
-    dark_mask = np.clip(dark_mask, 0, 1)
+    dark_mask = gray_source_img - gray_source_img * alpha_mask[..., 0] + dark_mask * alpha_mask[..., 0]
+    dark_mask = dark_mask * alpha_mask[..., 0]
+    dark_mask = cv2.GaussianBlur(dark_mask, (gaussian_kernel, gaussian_kernel), 0)
 
     bright_mask = np.where(blur_gray_source_img > thresh * bright_trash_scale, blur_gray_source_img, 0) * alpha_mask[...,0]
     bright_mask = cv2.blur(bright_mask, (int(blur_kernel), int(blur_kernel)), 0)
     bright_target_img = cv2.addWeighted(target_img, 1, cv2.cvtColor(bright_mask, cv2.COLOR_GRAY2RGB), bright_weight, 0)
 
-    hsv_bright_target_img = cv2.cvtColor(bright_target_img, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv_bright_target_img)
-    v = np.array(v - v * alpha_mask[:, :, 0] + v * alpha_mask[:, :, 0] * dark_mask, dtype=np.uint8)
-    final_hsv = cv2.merge((h, s, v))
-    shadow_bright_target_img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    dark_mask = dark_mask * alpha_mask[:, :, 0]
+    alpha_dark_mask = np.logical_and(dark_mask < 255, dark_mask > 0).astype(np.uint8) * 255
 
-    return shadow_bright_target_img
+    dark_mask = cv2.cvtColor((dark_mask * alpha_mask[:, :, 0]), cv2.COLOR_GRAY2BGRA)
+    dark_mask[..., 3] = alpha_dark_mask
+    shadow_bright_target_img = multiply(cv2.cvtColor(bright_target_img, cv2.COLOR_BGR2BGRA).astype(float),
+                                        dark_mask.astype(float),
+                                        0.4)
+    return cv2.cvtColor(shadow_bright_target_img.astype(np.uint8), cv2.COLOR_BGRA2BGR)
 
 
 if __name__ == '__main__':

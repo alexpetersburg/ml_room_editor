@@ -31,3 +31,4 @@ webdataset
 packaging
 wldhx.yadisk-direct
 loguru==0.5.3
+blend_modes==2.1.0
