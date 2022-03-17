@@ -45,26 +45,24 @@ pip install -e .
 ```python
 from smartroom_ml.inference import predict_mask, predict_layout, predict_neurvps
 segmentation_mask = predict_mask(image)
-layout_mask, layout_polygons = predict_layout(image) # layout_polygons: {segment_class: [points]} 
-                                                     # e.g. {1: [{'x': 0.0030643513789581204, 'y': 0.0, 
-                                                     #            'point_classes': [1]}, ...}
+layout_mask, layout_polygons = predict_layout(image) # layout_polygons: [{points: [{'x': 0.00306, 'y': 0.0}, ...]
+                                                     #                    layout_type: int}]
 vps = predict_neurvps(image)
 
 -----------------------------------------------
 
-from smartroom_ml.texture_transform_vps import change_floor_texture, change_wall_color, change_wall_texture, FLOOR_IDX, \
+from smartroom_ml.texture_transform_vps import change_floor_texture, change_wall_pollygons_material, FLOOR_IDX, \
                                                WALL_IDX
                                                
 result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, texture=texture, texture_angle=0,
                                     apply_shadows=True, replace_rug=True, object_mask=None)
 
-# change wall color
-result_wall = change_wall_color(img=img, mask=segmentation_mask, color='#A91D11', apply_shadows=True, object_mask=None)
-
-# change wall texture
-result_wall = change_wall_texture(img=img, mask=segmentation_mask, vps=vps, layout=layout,
-                                  texture=wall_texture, 
-                                  apply_shadows=True, object_mask=None)
+# change wall material
+result_wall = change_wall_pollygons_material(img=img, mask=segmentation_mask, vps=vps, polygons=polygons, 
+                                             apply_shadows = True, object_mask = None)
+# polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
+#            material: str or np.ndarray
+#            (optional) layout_type: int}]
 
 # remove objects
 from smartroom_ml.remove_objects import find_objects, remove_object_from_mask

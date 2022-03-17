@@ -23,11 +23,24 @@ RUG_IDX = 28
 FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47, 50, 51, 56, 57, 62, 64, 65, 67, 70,
                   73, 74, 75, 77, 78, 81, 89, 92, 97, 98, 99, 107, 108, 110, 111, 112, 115, 117, 119, 120, 122, 124,
                   125, 127, 129, 130, 131, 132, 135, 137, 138, 139, 141, 142, 143, 145, 147, RUG_IDX]
+GET_WALL_LAYOUT_TYPE = {0: 'frontal', 1: 'left', 2: 'right'}
 
 
 def multiply_texture(texture, scale):
     row = np.hstack([texture]*scale)
     return np.vstack([row]*scale)
+
+
+def polygons_to_mask(polygons, mask_shape):
+    mask = np.full(mask_shape, 255, dtype=np.uint8)
+    for indx, polygon in polygons.items():
+        cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon])],
+                         -1, (indx), -1)
+    return mask
+
+
+def get_polygon_wall_type(points, vps):
+    return 0
 
 
 def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: np.ndarray, texture_angle=0,
@@ -77,19 +90,17 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
     return result
 
 
-def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF', use_noise: bool = True,
-                      apply_shadows: bool = True, object_mask: np.ndarray = None,
-                      layout_polygons: dict = None) -> np.ndarray:
+def _change_wall_color(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarray, color: str = '#FFFFFF', use_noise: bool = True,
+                      apply_shadows: bool = True) -> np.ndarray:
     """
 
         Args:
             img: orig img
             mask: seg mask of floor
+            alpha_mask: mask of wall
             color: 16-bit hex string
             use_noise: Use noise in color generation
             apply_shadows:
-            object_mask:
-            layout_polygons:
 
         Returns:
             Image with changed floor texture
@@ -103,19 +114,6 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     if use_noise:
         color_image = np.array(random_noise(color_image, var=1e-15) * 255, dtype=np.uint8)
         color_image = cv2.GaussianBlur(color_image, (3, 3), 0)
-
-    if object_mask is not None:
-        replace_mask = object_mask
-    else:
-        replace_mask = mask
-    if layout_polygons is not None and isinstance(layout_polygons, dict):
-        layout_mask = polygons_to_mask(layout_polygons, mask.shape)
-        layout_mask_walls = np.isin(layout_mask, LAYOUT_WALL_INDEXES)
-        replace_mask = ((replace_mask + 1) * layout_mask_walls * (WALL_IDX + 1)) - 1
-    alpha_mask = np.zeros([*replace_mask.shape, 3], dtype=np.uint8)
-    alpha_mask[..., 0] = replace_mask == WALL_IDX
-    alpha_mask[..., 1] = replace_mask == WALL_IDX
-    alpha_mask[..., 2] = replace_mask == WALL_IDX
     result = img.copy() - img * alpha_mask + (color_image * alpha_mask)
     if apply_shadows:
         result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
@@ -125,25 +123,15 @@ def change_wall_color(img: np.ndarray, mask: np.ndarray, color: str = '#FFFFFF',
     return result
 
 
-def polygons_to_mask(polygons, mask_shape):
-    mask = np.full(mask_shape, 255, dtype=np.uint8)
-    for indx, polygon in polygons.items():
-        cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon])],
-                         -1, (indx), -1)
-    return mask
-
-
-def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: Union[np.ndarray, dict], vps: list,
-                        texture:  np.ndarray,
-                        apply_shadows: bool = True, texture_angle: float = 0,
-                        object_mask: np.ndarray = None) -> np.ndarray:
+def _change_wall_texture(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarray, vps: list, wall_type, texture:  np.ndarray,
+                        apply_shadows: bool = True, texture_angle: float = 0) -> np.ndarray:
     """
 
         Args:
             vps: list of 3 vanishing points
             img: orig img
-            mask: seg mask of floor
-            layout: layout mask of room
+            mask: seg mask of image
+            alpha_mask: mask of wall
             texture: new wall texture
             apply_shadows: bool
             texture_angle: float
@@ -154,58 +142,90 @@ def change_wall_texture(img: np.ndarray, mask: np.ndarray, layout: Union[np.ndar
     vp1 = vps[0]
     vp2 = vps[1]
     vp3 = vps[2]
-    if isinstance(layout, dict):
-        layout_mask = polygons_to_mask(layout, mask.shape)
-    else:
-        layout_mask = layout
-    walls = [(0, 'frontal'), (1, 'left'), (2, 'right')]
-    if object_mask is not None:
-        replace_mask = object_mask
-    else:
-        replace_mask = mask
     result = img.copy()
-    for idx, wall in walls:
-        wall_mask = np.logical_and(layout_mask == idx, replace_mask == WALL_IDX).astype(np.uint8)
-        if wall_mask.sum() == 0:
-            continue
-        wall_polygon = create_polygon(np.array(wall_mask, dtype=np.uint8))
 
-        if wall == 'left':
-            if vp1[0] > max([point[0] for point in wall_polygon]):
-                pt1 = vp1
-            else:
-                pt1 = vp2
-            pt2 = vp3
-        elif wall == 'right':
-            if vp2[0] < min([point[0] for point in wall_polygon]):
-                pt1 = vp2
-            else:
-                pt1 = vp1
-            pt2 = vp3
+    wall_polygon = create_polygon(np.array(alpha_mask[..., 0], dtype=np.uint8))
+    wall = GET_WALL_LAYOUT_TYPE[wall_type]
+    if wall == 'left':
+        if vp1[0] > max([point[0] for point in wall_polygon]):
+            pt1 = vp1
         else:
-            pt1 = vp3
-            pt2 = None
-        border_sorted = []
-        border = find_perspective_border(wall_polygon, pt1, pt2, img.shape[:-1][::-1])
-        border_max = sorted(border, key=lambda tup: tup[1])
-        border_sorted.extend(sorted(border_max[:2], key=lambda tup: tup[0], reverse=True))
-        border_sorted.extend(sorted(border_max[2:], key=lambda tup: tup[0]))
-        border = border_sorted
+            pt1 = vp2
+        pt2 = vp3
+    elif wall == 'right':
+        if vp2[0] < min([point[0] for point in wall_polygon]):
+            pt1 = vp2
+        else:
+            pt1 = vp1
+        pt2 = vp3
+    else:
+        pt1 = vp3
+        pt2 = None
+    border_sorted = []
+    border = find_perspective_border(wall_polygon, pt1, pt2, img.shape[:-1][::-1])
+    border_max = sorted(border, key=lambda tup: tup[1])
+    border_sorted.extend(sorted(border_max[:2], key=lambda tup: tup[0], reverse=True))
+    border_sorted.extend(sorted(border_max[2:], key=lambda tup: tup[0]))
+    border = border_sorted
 
-        matrix = cv2.getPerspectiveTransform(
-            np.float32([[0, 0], [texture.shape[1] - 1, 0], [texture.shape[1] - 1, texture.shape[0] - 1],
-                        [0, texture.shape[0] - 1]]), np.float32(border))
-        warped_texture = cv2.warpPerspective(texture, matrix, (img.shape[1], img.shape[0]), cv2.INTER_LINEAR)
-        alpha_mask = np.zeros([*wall_mask.shape, 3], dtype=np.uint8)
-        alpha_mask[..., 0] = wall_mask
-        alpha_mask[..., 1] = wall_mask
-        alpha_mask[..., 2] = wall_mask
-        result = result - result * alpha_mask + (warped_texture * alpha_mask)
+    matrix = cv2.getPerspectiveTransform(
+        np.float32([[0, 0], [texture.shape[1] - 1, 0], [texture.shape[1] - 1, texture.shape[0] - 1],
+                    [0, texture.shape[0] - 1]]), np.float32(border))
+    warped_texture = cv2.warpPerspective(texture, matrix, (img.shape[1], img.shape[0]), cv2.INTER_LINEAR)
+    result = result - result * alpha_mask + (warped_texture * alpha_mask)
     if apply_shadows:
         result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
                                   dark_trash_scale=1.3, bright_trash_scale=1.5,
                                   blur_kernel=int(10 * max(img.shape)/800))
     return result
+
+
+def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list, polygons: list,
+                                   apply_shadows: bool = True, object_mask: np.ndarray = None):
+    """
+
+        Args:
+            img: orig img
+            vps: list of 3 vanishing points
+            mask: segmentation mask of image
+            polygons: list of wall polygons [{points: [{'x': 0.00306, 'y': 0.0}, ...]
+                                              material: str or np.ndarray
+                                              (optional) layout_type: int}]
+            apply_shadows: bool
+        Returns:
+            Image with changed wall texture
+        """
+    if object_mask is not None:
+        replace_mask = object_mask
+    else:
+        replace_mask = mask
+    result = img.copy()
+    for polygon in polygons:
+        wall_type = polygon.get('layout_type')
+        if wall_type is None:
+            wall_type = get_polygon_wall_type(polygon['points'], vps)
+        elif wall_type not in LAYOUT_WALL_INDEXES:
+            continue
+        wall_mask = np.full(mask.shape, 255, dtype=np.uint8)
+        wall_mask = cv2.drawContours(wall_mask, [np.array([(int(point['x']*mask.shape[1]), int(point['y']*mask.shape[0]))
+                                                      for point in polygon['points']])], -1, (wall_type), -1)
+        wall_mask = np.logical_and(wall_mask == wall_type, replace_mask == WALL_IDX).astype(np.uint8)
+        if wall_mask.sum() == 0:
+            continue
+        alpha_mask = np.zeros([*wall_mask.shape, 3], dtype=np.uint8)
+        alpha_mask[..., 0] = wall_mask
+        alpha_mask[..., 1] = wall_mask
+        alpha_mask[..., 2] = wall_mask
+        if isinstance(polygon['material'], str):
+            result = _change_wall_color(img=result, mask=mask, alpha_mask=alpha_mask, color=polygon['material'],
+                                        apply_shadows=apply_shadows)
+        elif isinstance(polygon['material'], np.ndarray):
+            result = _change_wall_texture(img=result, mask=mask, vps=vps, texture=polygon['material'],
+                                          apply_shadows=apply_shadows)
+        else:
+            raise TypeError(f"Wrong poligon material type: {type(polygon['material'])}")
+    return result
+
 
 
 if __name__ == "__main__":

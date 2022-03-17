@@ -346,13 +346,14 @@ def find_layout_polygons(layout_mask, blur_kernel=15, approx_strength=0.01):
         layout_segments[int(plane_class)] = approx
 
     layout_segments = fuse_points(layout_segments, max(layout_mask.shape) * 0.01)
+    out_polygons = []
     for layout_class, points in layout_segments.items():
-        layout_segments[int(layout_class)] = [{'x': float(point['point'][0] / layout_mask.shape[1]),
+        out_polygons.append({'points': [{'x': float(point['point'][0] / layout_mask.shape[1]),
                                           'y': float(point['point'][1] / layout_mask.shape[0]),
                                           'point_classes': point['point_classes']} for point in points]
     #     print(layout_segments[1])
     #     print(layout_segments[2])
-    return layout_segments
+    return out_polygons
 
 
 def fuse_points(layout_segments, d):
