@@ -120,6 +120,29 @@ def line_intersection(line1, line2):
     return int(x), int(y)
 
 
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+def vector_from_line(line: np.ndarray):
+    vector = line[1]
+    vector -= line[0]
+    return vector
+
+
+def angle_between(line1, line2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+    """
+    v1 = vector_from_line(line1)
+    v2 = vector_from_line(line2)
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
 def find_perspective_border(polygon, pt1, pt2, img_shape):
     # tmp = np.zeros(img_shape)
     result = []

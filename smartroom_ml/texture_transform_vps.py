@@ -12,7 +12,8 @@ from skimage.util import random_noise
 
 from smartroom_ml.utils.image_transform import rotate_crop
 from smartroom_ml.inference import predict_mask, predict_layout
-from smartroom_ml.vanishing_point_transforms import find_perspective_border, create_polygon
+from smartroom_ml.vanishing_point_transforms import find_perspective_border, create_polygon, line_intersection, \
+                                                    angle_between
 from smartroom_ml.shadows import transfer_shadows
 
 
@@ -23,7 +24,7 @@ RUG_IDX = 28
 FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47, 50, 51, 56, 57, 62, 64, 65, 67, 70,
                   73, 74, 75, 77, 78, 81, 89, 92, 97, 98, 99, 107, 108, 110, 111, 112, 115, 117, 119, 120, 122, 124,
                   125, 127, 129, 130, 131, 132, 135, 137, 138, 139, 141, 142, 143, 145, 147, RUG_IDX]
-GET_WALL_LAYOUT_TYPE = {0: 'frontal', 1: 'left', 2: 'right'}
+GET_WALL_LAYOUT_TYPE = {0: 'frontal', 1: 'left', 2: 'right', 11: 'vp1', 12: 'vp2'}
 
 
 def multiply_texture(texture, scale):
@@ -39,8 +40,26 @@ def polygons_to_mask(polygons, mask_shape):
     return mask
 
 
-def get_polygon_wall_type(points, vps):
-    return 0
+def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
+    vp1 = np.array(vps[0])
+    vp2 = np.array(vps[1])
+    y_sorted_points = sorted([(points_scale[0]*point['x'], points_scale[1]*point['y']) for point in points],
+                             key=lambda x: x[1])
+    # TODO get point in top/bot half, if points > 2, get segment with diff y
+    bot_line = y_sorted_points[0:2]
+    top_line = y_sorted_points[-2:]
+    intersection_point = np.array(line_intersection(bot_line, top_line))
+    if (np.abs(intersection_point).max() / max(np.abs(vp1).max(), np.abs(vp2).max())) > 10 or \
+            (abs(angle_between(np.array(top_line), np.array(((0, 0), (1, 0))))) < 0.174533 and
+             abs(angle_between(np.array(bot_line), np.array(((0, 0), (1, 0))))) < 0.174533):
+        print('here')
+        return 0
+    vp1_dist = np.linalg.norm(vp1 - intersection_point)
+    vp2_dist = np.linalg.norm(vp2 - intersection_point)
+    if vp1_dist <= vp2_dist:
+        return 11
+    else:
+        return 12
 
 
 def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: np.ndarray, texture_angle=0,
@@ -158,6 +177,12 @@ def _change_wall_texture(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarr
         else:
             pt1 = vp1
         pt2 = vp3
+    elif wall == 'vp1':
+        pt1 = vp1
+        pt2 = vp3
+    elif wall == 'vp2':
+        pt1 = vp2
+        pt2 = vp3
     else:
         pt1 = vp3
         pt2 = None
@@ -203,7 +228,7 @@ def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list,
     for polygon in polygons:
         wall_type = polygon.get('layout_type')
         if wall_type is None:
-            wall_type = get_polygon_wall_type(polygon['points'], vps)
+            wall_type = get_polygon_wall_type(polygon['points'], vps, points_scale=mask.shape)
         elif wall_type not in LAYOUT_WALL_INDEXES:
             continue
         wall_mask = np.full(mask.shape, 255, dtype=np.uint8)
@@ -220,8 +245,8 @@ def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list,
             result = _change_wall_color(img=result, mask=mask, alpha_mask=alpha_mask, color=polygon['material'],
                                         apply_shadows=apply_shadows)
         elif isinstance(polygon['material'], np.ndarray):
-            result = _change_wall_texture(img=result, mask=mask, vps=vps, texture=polygon['material'],
-                                          apply_shadows=apply_shadows)
+            result = _change_wall_texture(img=result, mask=mask, alpha_mask=alpha_mask, vps=vps, wall_type=wall_type,
+                                          texture=polygon['material'], apply_shadows=apply_shadows,)
         else:
             raise TypeError(f"Wrong poligon material type: {type(polygon['material'])}")
     return result
