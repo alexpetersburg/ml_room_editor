@@ -43,16 +43,23 @@ def polygons_to_mask(polygons, mask_shape):
 def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
     vp1 = np.array(vps[0])
     vp2 = np.array(vps[1])
-    y_sorted_points = sorted([(points_scale[0]*point['x'], points_scale[1]*point['y']) for point in points],
+    y_sorted_points = sorted([(points_scale[0] * point['x'], points_scale[1] * point['y']) for point in points],
                              key=lambda x: x[1])
-    # TODO get point in top/bot half, if points > 2, get segment with diff y
-    bot_line = y_sorted_points[0:2]
-    top_line = y_sorted_points[-2:]
+    if len(points) > 4:
+        bot_points = list(filter(lambda x: x[1] < 0.5*points_scale[1], y_sorted_points))
+        bot_points_last_index = y_sorted_points.index(bot_points[-1])
+        bot_points = y_sorted_points[0: max(2, bot_points_last_index + 1)]
+        bot_line = (min(bot_points, key=lambda x: x[0]), max(bot_points, key=lambda x: x[0]))
+        top_points = y_sorted_points[(min((len(y_sorted_points) - 2), bot_points_last_index + 1)):]
+        top_line = (min(top_points, key=lambda x: x[0]), max(top_points, key=lambda x: x[0]))
+    else:
+
+        bot_line = y_sorted_points[0:2]
+        top_line = y_sorted_points[-2:]
     intersection_point = np.array(line_intersection(bot_line, top_line))
     if (np.abs(intersection_point).max() / max(np.abs(vp1).max(), np.abs(vp2).max())) > 10 or \
             (abs(angle_between(np.array(top_line), np.array(((0, 0), (1, 0))))) < 0.174533 and
              abs(angle_between(np.array(bot_line), np.array(((0, 0), (1, 0))))) < 0.174533):
-        print('here')
         return 0
     vp1_dist = np.linalg.norm(vp1 - intersection_point)
     vp2_dist = np.linalg.norm(vp2 - intersection_point)
