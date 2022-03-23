@@ -4,6 +4,7 @@ import numpy as np
 from imantics import Mask
 import itertools
 from shapely.geometry import Polygon, LineString
+from math import pi
 
 
 def create_polygon(mask):
@@ -139,8 +140,10 @@ def angle_between(line1, line2):
     v2 = vector_from_line(line2)
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
-
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    angle = np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    if angle > pi/2:
+        angle = abs(angle-pi)
+    return angle
 
 
 def find_perspective_border(polygon, pt1, pt2, img_shape):
