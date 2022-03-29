@@ -52,10 +52,12 @@ vps = predict_neurvps(image)
 -----------------------------------------------
 
 from smartroom_ml.texture_transform_vps import change_floor_texture, change_wall_pollygons_material, FLOOR_IDX, \
-                                               WALL_IDX
+                                               WALL_IDX, LAYOUT_FLOOR_INDEX
                                                
 result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, texture=texture, texture_angle=0,
-                                    apply_shadows=True, replace_rug=True, object_mask=None)
+                                    apply_shadows=True, replace_rug=True, object_mask=None, 
+                                    layout=filter(lambda x: x['layout_type'] == LAYOUT_FLOOR_INDEX, layout_polygons).__next__())
+                                                                                            
 
 # change wall material
 result_wall = change_wall_pollygons_material(img=img, mask=segmentation_mask, vps=vps, polygons=polygons, 
@@ -76,8 +78,7 @@ all_object_mask = remove_object_from_mask(mask=segmentation_mask, object_mask=ob
 
 result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, texture=texture, texture_angle=0,
                                     apply_shadows=True, replace_rug=True, object_mask=specified_object_mask)
-result_wall = change_wall_texture(img=result_floor, mask=segmentation_mask, vps=vps, texture=wall_texture, apply_shadows=True, 
-                                  object_mask=specified_object_mask)
+
 
 # remove objects lama
 from smartroom_ml.remove_objects import remove_objects_lama

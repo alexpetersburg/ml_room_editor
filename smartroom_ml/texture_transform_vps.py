@@ -2,11 +2,12 @@ import math
 import operator
 import traceback
 from functools import reduce
-from typing import Union
+from typing import Union, Optional
 
 import cv2
 import os
 import numpy as np
+from shapely.geometry import Polygon, Point
 
 from skimage.util import random_noise
 
@@ -19,11 +20,13 @@ from smartroom_ml.shadows import transfer_shadows
 
 FLOOR_IDX = 3
 WALL_IDX = 0
-LAYOUT_WALL_INDEXES = [0, 1, 2]
 RUG_IDX = 28
 FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47, 50, 51, 56, 57, 62, 64, 65, 67, 70,
                   73, 74, 75, 77, 78, 81, 89, 92, 97, 98, 99, 107, 108, 110, 111, 112, 115, 117, 119, 120, 122, 124,
                   125, 127, 129, 130, 131, 132, 135, 137, 138, 139, 141, 142, 143, 145, 147, RUG_IDX]
+
+LAYOUT_WALL_INDEXES = [0, 1, 2]
+LAYOUT_FLOOR_INDEX = 3
 GET_WALL_LAYOUT_TYPE = {0: 'frontal', 1: 'left', 2: 'right', 11: 'vp1', 12: 'vp2'}
 
 
@@ -34,9 +37,13 @@ def multiply_texture(texture, scale):
 
 def polygons_to_mask(polygons, mask_shape):
     mask = np.full(mask_shape, 255, dtype=np.uint8)
-    for indx, polygon in polygons.items():
-        cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon])],
-                         -1, (indx), -1)
+    # [{points: [{'x': 0.00306, 'y': 0.0}, ...]
+    #   material: str or np.ndarray
+    #   (optional) layout_type: int}]
+    for polygon in polygons:
+        layout = polygon.get('layout_type', 0)
+        cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon['points']])],
+                         -1, (layout), -1)
     return mask
 
 
@@ -46,12 +53,24 @@ def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
     y_sorted_points = sorted([(points_scale[0] * point['x'], points_scale[1] * point['y']) for point in points],
                              key=lambda x: x[1])
     if len(points) > 4:
-        bot_points = list(filter(lambda x: x[1] < 0.5*points_scale[1], y_sorted_points))
-        bot_points_last_index = y_sorted_points.index(bot_points[-1])
-        bot_points = y_sorted_points[0: max(2, bot_points_last_index + 1)]
-        bot_line = (min(bot_points, key=lambda x: x[0]), max(bot_points, key=lambda x: x[0]))
-        top_points = y_sorted_points[(min((len(y_sorted_points) - 2), bot_points_last_index + 1)):]
-        top_line = (min(top_points, key=lambda x: x[0]), max(top_points, key=lambda x: x[0]))
+
+        # start_bot_line_index = None
+        # start_top_line_index = None
+        # max_top_dist = -1
+        # max_bot_dist = -1
+        # is_bot_prev_point = points[-1]['y'] < 0.5
+        # for i in range(len(points)):
+        #     if (points[-1]['y'] < 0.5) == (points[-1]['y'] < 0.5):
+        try:
+            bot_points = list(filter(lambda x: x[1] < 0.5*points_scale[1], y_sorted_points))
+            bot_points_last_index = y_sorted_points.index(bot_points[-1])
+            bot_points = y_sorted_points[0: max(2, bot_points_last_index + 1)]
+            bot_line = (min(bot_points, key=lambda x: x[0]), max(bot_points, key=lambda x: x[0]))
+            top_points = y_sorted_points[(min((len(y_sorted_points) - 2), bot_points_last_index + 1)):]
+            top_line = (min(top_points, key=lambda x: x[0]), max(top_points, key=lambda x: x[0]))
+        except IndexError:
+            bot_line = y_sorted_points[0:2]
+            top_line = y_sorted_points[-2:]
     else:
 
         bot_line = y_sorted_points[0:2]
@@ -63,15 +82,21 @@ def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
         return 0
     vp1_dist = np.linalg.norm(vp1 - intersection_point)
     vp2_dist = np.linalg.norm(vp2 - intersection_point)
+    shapely_polygon = Polygon([(points_scale[0] * point['x'], points_scale[1] * point['y']) for point in points])
+
     if vp1_dist <= vp2_dist:
+        if Point(vp1).within(shapely_polygon):
+            return 12
         return 11
     else:
+        if Point(vp2).within(shapely_polygon):
+            return 11
         return 12
 
 
 def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: np.ndarray, texture_angle=0,
-                         apply_shadows: bool = True, replace_rugs: bool = False,
-                         object_mask: np.ndarray = None) -> np.ndarray:
+                         apply_shadows: bool = True, replace_rugs: bool = False, object_mask: np.ndarray = None,
+                         layout: Union[dict, np.ndarray, None] = None) -> np.ndarray:
     """
 
     Args:
@@ -83,6 +108,7 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
         apply_shadows:
         replace_rug: replace rug with texture
         object_mask: optional mask with objects to replace
+        layout: mask of floor or polygon {points: [{'x': 0.00306, 'y': 0.0}, ...]}
 
     Returns:
         Image with changed floor texture
@@ -98,6 +124,16 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
         replace_mask = object_mask
     else:
         replace_mask = mask
+    if layout is not None:
+        if isinstance(layout, np.ndarray):
+            layout_mask =layout
+        else:
+            layout_mask = cv2.drawContours(np.zeros(replace_mask.shape),
+                                           [np.array([(int(point['x']*mask.shape[1]), int(point['y']*mask.shape[0]))
+                                                      for point in layout['points']])], -1, (LAYOUT_FLOOR_INDEX), -1)
+        replace_mask = (replace_mask * (layout_mask == LAYOUT_FLOOR_INDEX)).astype(np.uint8)
+        mask = mask.copy()
+        mask = (mask * (layout_mask == LAYOUT_FLOOR_INDEX))
     border = find_perspective_border(create_polygon(np.array(replace_mask == FLOOR_IDX, dtype=np.uint8)), vp1, vp2, img.shape[:-1][::-1])
     center = tuple(map(operator.truediv, reduce(lambda x, y: map(operator.add, x, y), border), [len(border)] * 2))
     border = sorted(border, key=lambda coord: (-135 - math.degrees(math.atan2(*tuple(map(operator.sub, coord, center))[::-1]))) % 360, reverse=True)
@@ -141,10 +177,6 @@ def _change_wall_color(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarray
         color_image = np.array(random_noise(color_image, var=1e-15) * 255, dtype=np.uint8)
         color_image = cv2.GaussianBlur(color_image, (3, 3), 0)
     result = img.copy() - img * alpha_mask + (color_image * alpha_mask)
-    if apply_shadows:
-        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                                  dark_trash_scale=1.3, bright_trash_scale=1.5,
-                                  blur_kernel=int(10 * max(img.shape)/800))
 
     return result
 
@@ -205,10 +237,7 @@ def _change_wall_texture(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarr
                     [0, texture.shape[0] - 1]]), np.float32(border))
     warped_texture = cv2.warpPerspective(texture, matrix, (img.shape[1], img.shape[0]), cv2.INTER_LINEAR)
     result = result - result * alpha_mask + (warped_texture * alpha_mask)
-    if apply_shadows:
-        result = transfer_shadows(source_img=img, target_img=result, mask=mask, mask_target=WALL_IDX,
-                                  dark_trash_scale=1.3, bright_trash_scale=1.5,
-                                  blur_kernel=int(10 * max(img.shape)/800))
+
     return result
 
 
@@ -256,6 +285,12 @@ def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list,
                                           texture=polygon['material'], apply_shadows=apply_shadows,)
         else:
             raise TypeError(f"Wrong poligon material type: {type(polygon['material'])}")
+        if apply_shadows:
+            shadow_mask = (mask == WALL_IDX) * alpha_mask[..., 2]
+
+            result = transfer_shadows(source_img=img, target_img=result, mask=shadow_mask, mask_target=1,
+                                      dark_trash_scale=1.3, bright_trash_scale=1.5,
+                                      blur_kernel=int(10 * max(img.shape) / 800))
     return result
 
 

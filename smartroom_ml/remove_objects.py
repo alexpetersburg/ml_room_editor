@@ -68,7 +68,7 @@ def find_objects(mask: np.ndarray, target_classes: list, merge_objects: bool = T
 
 def remove_object_from_mask(mask, object_mask, layout, floor_idx, wall_idx):
     mapper = {0: wall_idx, 1: wall_idx, 2:wall_idx, 3:floor_idx, 4: -1}
-    if isinstance(layout, dict):
+    if isinstance(layout, list):
         layout_mask = polygons_to_mask(layout, mask.shape)
     else:
         layout_mask = layout
