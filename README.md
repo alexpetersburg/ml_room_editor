@@ -51,7 +51,8 @@ vps = predict_neurvps(image)
 
 -----------------------------------------------
 
-from smartroom_ml.texture_transform_vps import change_floor_texture, change_wall_pollygons_material, FLOOR_IDX, \
+from smartroom_ml.texture_transform_vps import change_floor_texture, change_wall_polygons_material, \
+                                               change_polygons_material, \
                                                WALL_IDX, LAYOUT_FLOOR_INDEX
                                                
 result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, texture=texture, texture_angle=0,
@@ -60,11 +61,25 @@ result_floor = change_floor_texture(img=img, mask=segmentation_mask, vps=vps, te
                                                                                             
 
 # change wall material
-result_wall = change_wall_pollygons_material(img=img, mask=segmentation_mask, vps=vps, polygons=polygons, 
+result_wall = change_wall_polygons_material(img=img, mask=segmentation_mask, vps=vps, polygons=polygons, 
                                              apply_shadows = True, object_mask = None)
-# polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
-#            material: str or np.ndarray
-#            (optional) layout_type: int}]
+"""
+polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
+           material: str or np.ndarray
+           (optional) layout_type: int}]
+"""
+
+
+# change polygon material
+result = change_polygons_material(img=img, vps=vps, polygons=polygons)
+"""
+polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
+           material: str or np.ndarray
+           layout_type: int}]
+* Layout types: {0: 'frontal', 1: 'left', 2: 'right'} - walls
+                {3: 'floor', 4: 'celling'}
+                {10: 'wall'} - indefinite wall
+"""
 
 # remove objects
 from smartroom_ml.remove_objects import find_objects, remove_object_from_mask

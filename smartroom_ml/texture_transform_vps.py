@@ -27,7 +27,7 @@ FURNITURE_IDXS = [7, 10, 15, 19, 23, 24, 30, 31, 33, 35, 36, 37, 39, 41, 44, 47,
 
 LAYOUT_WALL_INDEXES = [0, 1, 2]
 LAYOUT_FLOOR_INDEX = 3
-GET_WALL_LAYOUT_TYPE = {0: 'frontal', 1: 'left', 2: 'right', 11: 'vp1', 12: 'vp2'}
+GET_LAYOUT_TYPE = {0: 'frontal', 1: 'left', 2: 'right', 3: 'floor', 4: 'celling', 11: 'vp1', 12: 'vp2', 10: 'wall'}
 
 
 def multiply_texture(texture, scale):
@@ -45,6 +45,37 @@ def polygons_to_mask(polygons, mask_shape):
         cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon['points']])],
                          -1, (layout), -1)
     return mask
+
+
+def determine_vps(vps, layout_type, points):
+    vp1 = vps[0]
+    vp2 = vps[1]
+    vp3 = vps[2]
+    if layout_type in ['floor', 'celling']:
+        pt1 = vp1
+        pt2 = vps[1]
+    elif layout_type == 'left':
+        if vp1[0] > max([point[0] for point in points]):
+            pt1 = vp1
+        else:
+            pt1 = vp2
+        pt2 = vp3
+    elif layout_type == 'right':
+        if vp2[0] < min([point[0] for point in points]):
+            pt1 = vp2
+        else:
+            pt1 = vp1
+        pt2 = vp3
+    elif layout_type == 'vp1':
+        pt1 = vp1
+        pt2 = vp3
+    elif layout_type == 'vp2':
+        pt1 = vp2
+        pt2 = vp3
+    else:
+        pt1 = vp3
+        pt2 = None
+    return pt1, pt2
 
 
 def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
@@ -152,18 +183,15 @@ def change_floor_texture(img: np.ndarray, mask: np.ndarray, vps: list, texture: 
     return result
 
 
-def _change_wall_color(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarray, color: str = '#FFFFFF', use_noise: bool = True,
-                      apply_shadows: bool = True) -> np.ndarray:
+def _change_polygon_color(img: np.ndarray, alpha_mask: np.ndarray, color: str = '#FFFFFF',
+                       use_noise: bool = True) -> np.ndarray:
     """
 
         Args:
             img: orig img
-            mask: seg mask of floor
             alpha_mask: mask of wall
             color: 16-bit hex string
             use_noise: Use noise in color generation
-            apply_shadows:
-
         Returns:
             Image with changed floor texture
         """
@@ -181,50 +209,25 @@ def _change_wall_color(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarray
     return result
 
 
-def _change_wall_texture(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarray, vps: list, wall_type, texture:  np.ndarray,
-                        apply_shadows: bool = True, texture_angle: float = 0) -> np.ndarray:
+def _change_polygon_texture(img: np.ndarray, alpha_mask: np.ndarray, pt1, pt2, texture:  np.ndarray,
+                            texture_angle: float = 0) -> np.ndarray:
     """
 
         Args:
-            vps: list of 3 vanishing points
+            pt1: first vanishing point
+            pt2: second vanishing point
             img: orig img
-            mask: seg mask of image
             alpha_mask: mask of wall
             texture: new wall texture
-            apply_shadows: bool
             texture_angle: float
         Returns:
             Image with changed wall texture
         """
     texture = rotate_crop(texture, texture_angle)
-    vp1 = vps[0]
-    vp2 = vps[1]
-    vp3 = vps[2]
+
     result = img.copy()
 
     wall_polygon = create_polygon(np.array(alpha_mask[..., 0], dtype=np.uint8))
-    wall = GET_WALL_LAYOUT_TYPE[wall_type]
-    if wall == 'left':
-        if vp1[0] > max([point[0] for point in wall_polygon]):
-            pt1 = vp1
-        else:
-            pt1 = vp2
-        pt2 = vp3
-    elif wall == 'right':
-        if vp2[0] < min([point[0] for point in wall_polygon]):
-            pt1 = vp2
-        else:
-            pt1 = vp1
-        pt2 = vp3
-    elif wall == 'vp1':
-        pt1 = vp1
-        pt2 = vp3
-    elif wall == 'vp2':
-        pt1 = vp2
-        pt2 = vp3
-    else:
-        pt1 = vp3
-        pt2 = None
     border_sorted = []
     border = find_perspective_border(wall_polygon, pt1, pt2, img.shape[:-1][::-1])
     border_max = sorted(border, key=lambda tup: tup[1])
@@ -241,7 +244,7 @@ def _change_wall_texture(img: np.ndarray, mask: np.ndarray, alpha_mask: np.ndarr
     return result
 
 
-def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list, polygons: list,
+def change_wall_polygons_material(img: np.ndarray, mask: np.ndarray, vps: list, polygons: list,
                                    apply_shadows: bool = True, object_mask: np.ndarray = None):
     """
 
@@ -267,9 +270,10 @@ def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list,
             wall_type = get_polygon_wall_type(polygon['points'], vps, points_scale=mask.shape)
         elif wall_type not in LAYOUT_WALL_INDEXES:
             continue
+        formatted_points = [(int(point['x']*mask.shape[1]), int(point['y']*mask.shape[0]))
+                            for point in polygon['points']]
         wall_mask = np.full(mask.shape, 255, dtype=np.uint8)
-        wall_mask = cv2.drawContours(wall_mask, [np.array([(int(point['x']*mask.shape[1]), int(point['y']*mask.shape[0]))
-                                                      for point in polygon['points']])], -1, (wall_type), -1)
+        wall_mask = cv2.drawContours(wall_mask, [np.array(formatted_points)], -1, (wall_type), -1)
         wall_mask = np.logical_and(wall_mask == wall_type, replace_mask == WALL_IDX).astype(np.uint8)
         if wall_mask.sum() == 0:
             continue
@@ -278,11 +282,11 @@ def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list,
         alpha_mask[..., 1] = wall_mask
         alpha_mask[..., 2] = wall_mask
         if isinstance(polygon['material'], str):
-            result = _change_wall_color(img=result, mask=mask, alpha_mask=alpha_mask, color=polygon['material'],
-                                        apply_shadows=apply_shadows)
+            result = _change_polygon_color(img=result, alpha_mask=alpha_mask, color=polygon['material'])
         elif isinstance(polygon['material'], np.ndarray):
-            result = _change_wall_texture(img=result, mask=mask, alpha_mask=alpha_mask, vps=vps, wall_type=wall_type,
-                                          texture=polygon['material'], apply_shadows=apply_shadows,)
+            pt1, pt2 = determine_vps(vps=vps, layout_type=GET_LAYOUT_TYPE[wall_type], points=formatted_points)
+            result = _change_polygon_texture(img=result, alpha_mask=alpha_mask, pt1=pt1, pt2=pt2,
+                                             texture=polygon['material'])
         else:
             raise TypeError(f"Wrong poligon material type: {type(polygon['material'])}")
         if apply_shadows:
@@ -293,6 +297,53 @@ def change_wall_pollygons_material(img: np.ndarray, mask: np.ndarray, vps: list,
                                       blur_kernel=int(10 * max(img.shape) / 800))
     return result
 
+
+def change_polygons_material(img: np.ndarray, vps: list, polygons: list):
+    """
+
+            Args:
+                img: orig img
+                vps: list of 3 vanishing points
+                polygons: list of wall polygons [{points: [{'x': 0.00306, 'y': 0.0}, ...]
+                                                  material: str or np.ndarray
+                                                  layout_type: int}]
+                                                   * Layout types: {0: 'frontal', 1: 'left', 2: 'right'} - walls
+                                                                   {3: 'floor', 4: 'celling'}
+                                                                   {10: 'wall'} - indefinite wall
+            Returns:
+                Image with changed texture
+            """
+    result = img.copy()
+    for polygon in polygons:
+        try:
+            layout_type = polygon['layout_type']
+        except KeyError:
+            raise KeyError('It is required to specify layout_type in the polygon')
+        try:
+            layout_type = GET_LAYOUT_TYPE[layout_type]
+        except KeyError:
+            raise KeyError(f'Wrong layout type: {layout_type}')
+        if layout_type == 'wall':
+            layout_type = GET_LAYOUT_TYPE[get_polygon_wall_type(polygon['points'], vps, points_scale=img.shape)]
+        formatted_polygon = [(int(point['x'] * img.shape[1]), int(point['y'] * img.shape[0]))
+                                                   for point in polygon['points']]
+        polygon_mask = np.full(img.shape[:2], 0, dtype=np.uint8)
+        polygon_mask = cv2.drawContours(polygon_mask,
+                                        [np.array(formatted_polygon)], -1, (1), -1)
+        alpha_mask = np.zeros([*polygon_mask.shape, 3], dtype=np.uint8)
+        alpha_mask[..., 0] = polygon_mask
+        alpha_mask[..., 1] = polygon_mask
+        alpha_mask[..., 2] = polygon_mask
+        if isinstance(polygon['material'], str):
+            result = _change_polygon_color(img=result, alpha_mask=alpha_mask, color=polygon['material'])
+        elif isinstance(polygon['material'], np.ndarray):
+            pt1, pt2 = determine_vps(vps=vps, layout_type=layout_type,
+                                     points=formatted_polygon)
+            result = _change_polygon_texture(img=result, alpha_mask=alpha_mask, pt1=pt1, pt2=pt2,
+                                             texture=polygon['material'])
+        else:
+            raise KeyError(f'Wrong material type: {type(polygon["material"])}')
+    return result
 
 
 if __name__ == "__main__":
