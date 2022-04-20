@@ -35,15 +35,18 @@ def multiply_texture(texture, scale):
     return np.vstack([row]*scale)
 
 
-def polygons_to_mask(polygons, mask_shape):
-    mask = np.full(mask_shape, 255, dtype=np.uint8)
+def polygons_to_mask(polygons, mask_shape, fill_value: int = 255, polygon_key: None = 'layout_type',
+                     default_polygon_value: np.int = 0):
+    mask = np.full(mask_shape, fill_value, dtype=np.uint8)
     # [{points: [{'x': 0.00306, 'y': 0.0}, ...]
     #   material: str or np.ndarray
     #   (optional) layout_type: int}]
     for polygon in polygons:
-        layout = polygon.get('layout_type', 0)
+        value = default_polygon_value
+        if polygon_key is not None:
+            value = polygon.get(polygon_key, default_polygon_value)
         cv2.drawContours(mask, [np.array([(int(point['x']*mask_shape[1]), int(point['y']*mask_shape[0])) for point in polygon['points']])],
-                         -1, (layout), -1)
+                         -1, (value), -1)
     return mask
 
 
@@ -298,7 +301,7 @@ def change_wall_polygons_material(img: np.ndarray, mask: np.ndarray, vps: list, 
     return result
 
 
-def change_polygons_material(img: np.ndarray, vps: list, polygons: list):
+def change_polygons_material(img: np.ndarray, vps: list, polygons: list, objects_polygons: list = None):
     """
 
             Args:
@@ -310,10 +313,17 @@ def change_polygons_material(img: np.ndarray, vps: list, polygons: list):
                                                    * Layout types: {0: 'frontal', 1: 'left', 2: 'right'} - walls
                                                                    {3: 'floor', 4: 'celling'}
                                                                    {10: 'wall'} - indefinite wall
+                objects_polygons: list of objects polygons to remove
+                                                [{points: [{'x': 0.00306, 'y': 0.0}, ...]]
+
             Returns:
                 Image with changed texture
             """
     result = img.copy()
+    remove_mask = None
+    if objects_polygons is not None:
+        remove_mask = polygons_to_mask(objects_polygons, result.shape[:2], fill_value=1, default_polygon_value=0,
+                                       polygon_key=None)
     for polygon in polygons:
         try:
             layout_type = polygon['layout_type']
@@ -330,6 +340,8 @@ def change_polygons_material(img: np.ndarray, vps: list, polygons: list):
         polygon_mask = np.full(img.shape[:2], 0, dtype=np.uint8)
         polygon_mask = cv2.drawContours(polygon_mask,
                                         [np.array(formatted_polygon)], -1, (1), -1)
+        if objects_polygons is not None:
+            polygon_mask *= remove_mask
         alpha_mask = np.zeros([*polygon_mask.shape, 3], dtype=np.uint8)
         alpha_mask[..., 0] = polygon_mask
         alpha_mask[..., 1] = polygon_mask
