@@ -71,7 +71,7 @@ polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
 
 
 # change polygon material
-result = change_polygons_material(img=img, vps=vps, polygons=polygons)
+result = change_polygons_material(img=img, vps=vps, polygons=polygons, objects_polygons=objects_polygons)
 """
 polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
            material: str or np.ndarray
@@ -79,6 +79,8 @@ polygons:[{points: [{'x': 0.00306, 'y': 0.0}, ...]
 * Layout types: {0: 'frontal', 1: 'left', 2: 'right'} - walls
                 {3: 'floor', 4: 'celling'}
                 {10: 'wall'} - indefinite wall
+                
+objects_polygons: [{points: [{'x': 0.00306, 'y': 0.0}, ...]]
 """
 
 # remove objects
