@@ -5,6 +5,9 @@ from imantics import Mask
 import itertools
 from shapely.geometry import Polygon, LineString
 from math import pi
+import cv2
+
+MAX_PERSPECTIVE_BORDER_ERROR = 0.05
 
 
 def create_polygon(mask):
@@ -17,10 +20,9 @@ def create_polygon(mask):
     return points
 
 
-def find_horizontal_intersection_lines(polygon, img_shape):
+def find_horizontal_intersection_lines(shapely_poly: Polygon, img_shape):
     result = []
     stride = 2
-    shapely_poly = Polygon(polygon)
     previous_intersect = None
     previous_condidate = None
     for y in range(0, img_shape[1]+1, stride):
@@ -43,8 +45,7 @@ def find_horizontal_intersection_lines(polygon, img_shape):
     return result
 
 
-def find_intersection_lines(polygon, pt, img_shape):
-    shapely_poly = Polygon(polygon)
+def find_intersection_lines(shapely_poly: Polygon, pt, img_shape):
     result = []
     pt_location = [None, None]
     if pt[0] < 0:
@@ -146,16 +147,36 @@ def angle_between(line1, line2):
     return angle
 
 
+def create_simple_border(polygon: np.ndarray):
+    min_border = cv2.minAreaRect(polygon)
+    return cv2.boxPoints(min_border).astype(int)
+
+
 def find_perspective_border(polygon, pt1, pt2, img_shape):
-    # tmp = np.zeros(img_shape)
     result = []
-    pt1_lines = find_intersection_lines(polygon, pt1, img_shape)[:2]
+    if pt1 is None:
+        if len(polygon) == 4:
+            return polygon
+        return create_simple_border(polygon)
+    shapely_polygon = Polygon(polygon)
+    pt1_lines = find_intersection_lines(shapely_polygon, pt1, img_shape)[:2]
     if pt2 is not None:
-        pt2_lines = find_intersection_lines(polygon, pt2, img_shape)[:2]
+        pt2_lines = find_intersection_lines(shapely_polygon, pt2, img_shape)[:2]
     else:
-        pt2_lines = find_horizontal_intersection_lines(polygon, img_shape)[:2]
+        pt2_lines = find_horizontal_intersection_lines(shapely_polygon, img_shape)[:2]
     for pt1_line in pt1_lines:
         for pt2_line in pt2_lines:
             point = line_intersection(pt1_line, pt2_line)
             result.append(point)
+
+    border_sorted = []
+    border_max = sorted(result, key=lambda tup: tup[1])
+    border_sorted.extend(sorted(border_max[:2], key=lambda tup: tup[0], reverse=True))
+    border_sorted.extend(sorted(border_max[2:], key=lambda tup: tup[0]))
+    result = border_sorted
+
+    result_polygon = Polygon(result)
+    diff_result = shapely_polygon.difference(result_polygon)
+    if diff_result.area / shapely_polygon.area > MAX_PERSPECTIVE_BORDER_ERROR:
+        result = create_simple_border(np.array(polygon))
     return result
