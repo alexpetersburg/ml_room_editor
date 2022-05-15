@@ -105,7 +105,7 @@ def find_intersection_lines(shapely_poly: Polygon, pt, img_shape):
     return result
 
 
-def line_intersection(line1, line2):
+def line_intersection(line1, line2, allow_parallel_intersection=False):
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -114,7 +114,14 @@ def line_intersection(line1, line2):
 
     div = det(xdiff, ydiff)
     if div == 0:
-        raise Exception('lines do not intersect')
+        if not allow_parallel_intersection:
+            raise Exception('lines do not intersect')
+        sorted_line = sorted([list(elem) for elem in line1], key=lambda x: x[0])
+        if sorted_line[0][1] < sorted_line[1][1]:
+            sorted_line[1][1] -= 1
+        else:
+            sorted_line[1][1] += 1
+            return line_intersection(sorted_line, line2)
 
     d = (det(*line1), det(*line2))
     x = det(d, xdiff) / div

@@ -113,7 +113,7 @@ def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
 
         bot_line = y_sorted_points[0:2]
         top_line = y_sorted_points[-2:]
-    intersection_point = np.array(line_intersection(bot_line, top_line))
+    intersection_point = np.array(line_intersection(bot_line, top_line, allow_parallel_intersection=True))
     if (np.abs(intersection_point).max() / max(np.abs(vp1).max(), np.abs(vp2).max())) > 10 or \
             (abs(angle_between(np.array(top_line), np.array(((0, 0), (1, 0))))) < 0.174533 and
              abs(angle_between(np.array(bot_line), np.array(((0, 0), (1, 0))))) < 0.174533):
