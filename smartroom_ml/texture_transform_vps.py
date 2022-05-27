@@ -121,14 +121,18 @@ def get_polygon_wall_type(points, vps, points_scale=(1, 1)):
     vp1_dist = np.linalg.norm(vp1 - intersection_point)
     vp2_dist = np.linalg.norm(vp2 - intersection_point)
     shapely_polygon = Polygon([(points_scale[0] * point['x'], points_scale[1] * point['y']) for point in points])
+    vp1_within_poly = Point(vp1).within(shapely_polygon)
+    vp2_within_poly = Point(vp2).within(shapely_polygon)
+    if vp1_within_poly and not vp2_within_poly:
+        return 12
+    if vp2_within_poly and not vp1_within_poly:
+        return 11
+    if vp2_within_poly and vp1_within_poly:
+        return 0
 
     if vp1_dist <= vp2_dist:
-        if Point(vp1).within(shapely_polygon):
-            return 12
         return 11
     else:
-        if Point(vp2).within(shapely_polygon):
-            return 11
         return 12
 
 
@@ -334,7 +338,7 @@ def change_polygons_material(img: np.ndarray, vps: list, polygons: list, objects
         except KeyError:
             raise KeyError(f'Wrong layout type: {layout_type}')
         if layout_type == 'wall':
-            layout_type = GET_LAYOUT_TYPE[get_polygon_wall_type(polygon['points'], vps, points_scale=img.shape)]
+            layout_type = GET_LAYOUT_TYPE[get_polygon_wall_type(polygon['points'], vps, points_scale=img.shape[:2][::-1])]
         formatted_polygon = [(int(point['x'] * img.shape[1]), int(point['y'] * img.shape[0]))
                                                    for point in polygon['points']]
         polygon_mask = np.full(img.shape[:2], 0, dtype=np.uint8)
